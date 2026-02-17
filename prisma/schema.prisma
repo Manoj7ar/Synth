@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String
+  name         String?
+  createdAt    DateTime @default(now())
+  
+  clinicianVisits Visit[] @relation("ClinicianVisits")
+  appointments   Appointment[] @relation("ClinicianAppointments")
+  carePlanItems  CarePlanItem[] @relation("ClinicianCarePlanItems")
+  generatedReports GeneratedReport[] @relation("ClinicianGeneratedReports")
+}
+
+model Patient {
+  id          String   @id @default(cuid())
+  displayName String
+  dateOfBirth DateTime?
+  createdAt   DateTime @default(now())
+  
+  visits            Visit[]
+  shareLinks        ShareLink[]
+  appointments      Appointment[]
+  carePlanItems     CarePlanItem[]
+  generatedReports  GeneratedReport[]
+}
+
+model Visit {
+  id          String    @id @default(cuid())
+  patientId   String
+  clinicianId String
+  status      String
+  chiefComplaint String?
+  startedAt   DateTime  @default(now())
+  finalizedAt DateTime?
+  
+  patient          Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinician        User               @relation("ClinicianVisits", fields: [clinicianId], references: [id])
+  shareLinks       ShareLink[]
+  documentation    VisitDocumentation?
+  appointments     Appointment[]
+  carePlanItems    CarePlanItem[]
+  generatedReports GeneratedReport[]
+  
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([status])
+}
+
+model VisitDocumentation {
+  id              String   @id @default(cuid())
+  visitId          String   @unique
+  transcriptJson   String
+  summary          String
+  soapNotes        String
+  additionalNotes  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+}
+
+model ShareLink {
+  id        String    @id @default(cuid())
+  visitId   String
+  patientId String
+  token     String    @unique
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  
+  visit   Visit   @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([visitId])
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  visitId     String
+  patientId   String
+  clinicianId String
+  title       String
+  scheduledFor DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  visit      Visit    @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinician  User     @relation("ClinicianAppointments", fields: [clinicianId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([scheduledFor])
+}
+
+model CarePlanItem {
+  id          String   @id @default(cuid())
+  visitId     String
+  patientId   String
+  clinicianId String
+  title       String
+  details     String?
+  dueAt       DateTime?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  visit      Visit    @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinician  User     @relation("ClinicianCarePlanItems", fields: [clinicianId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([dueAt])
+}
+
+model GeneratedReport {
+  id          String   @id @default(cuid())
+  visitId     String
+  patientId   String
+  clinicianId String
+  title       String
+  content     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  visit      Visit    @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinician  User     @relation("ClinicianGeneratedReports", fields: [clinicianId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([createdAt])
+}

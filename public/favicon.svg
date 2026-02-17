@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#f6efe2" />
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#e3d4bb" stroke-width="2" />
+  <text
+    x="32"
+    y="42"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="36"
+    font-weight="700"
+    fill="#6b5338"
+  >
+    S
+  </text>
+</svg>

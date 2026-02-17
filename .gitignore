@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local app/runtime artifacts
+.devserver.log
+*.code-workspace
+prisma/*.db
+prisma/*.db-*
 
 # vercel
 .vercel
