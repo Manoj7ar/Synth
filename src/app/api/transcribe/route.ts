@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getGeminiModel } from '@/lib/gemini'
+import { getGeminiModel, isGeminiConfigured } from '@/lib/gemini'
 
 type SpeakerRole = 'clinician' | 'patient'
 
@@ -189,6 +189,16 @@ export async function POST(req: NextRequest) {
 
     if (!(audioFile instanceof File)) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
+    }
+
+    if (!isGeminiConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'Server transcription is unavailable because GEMINI_API_KEY is not configured. You can still use live browser transcript and save it.',
+        },
+        { status: 503 }
+      )
     }
 
     const result = await transcribeWithGemini(audioFile)

@@ -1,14 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const apiKey = process.env.GEMINI_API_KEY
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
 
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY is required. Add it to your .env file.')
+export function isGeminiConfigured(): boolean {
+  return Boolean(apiKey)
 }
 
-const genAI = new GoogleGenerativeAI(apiKey)
-
 export function getGeminiModel(modelName = 'gemini-2.0-flash') {
+  if (!genAI) {
+    throw new Error('Gemini is not configured. Set GEMINI_API_KEY in .env to enable AI generation.')
+  }
   return genAI.getGenerativeModel({ model: modelName })
 }
 

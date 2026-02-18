@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { LogOut, Plus } from 'lucide-react'
 import { FloatingSidebarNav } from '@/components/clinician/FloatingSidebarNav'
@@ -11,6 +12,8 @@ interface TranscribeWorkspaceProps {
 }
 
 export function TranscribeWorkspace({ clinicianName }: TranscribeWorkspaceProps) {
+  const [isRecordingFocus, setIsRecordingFocus] = useState(false)
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#f7f9ff_0%,#e5ecff_50%,#eef3ff_100%)] text-slate-900">
       <div
@@ -56,21 +59,25 @@ export function TranscribeWorkspace({ clinicianName }: TranscribeWorkspaceProps)
         </div>
       </header>
 
-      <main className="relative z-10 px-6 pb-10 pt-24 md:px-10 md:pb-14 md:pt-28">
+      <main className="relative z-10 px-6 pb-10 pt-20 md:px-10 md:pb-14 md:pt-24">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Transcribe
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-5xl">
-            Turn every conversation into structured clinical output
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-lg">
-            Capture visits in real time, watch AI extract clinical signals, and save complete
-            transcripts for SOAP generation and follow-up workflows.
-          </p>
+          {!isRecordingFocus && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Transcribe
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+                Turn every conversation into structured clinical output
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-lg">
+                Capture visits in real time, watch AI extract clinical signals, and save complete
+                transcripts for SOAP generation and follow-up workflows.
+              </p>
+            </>
+          )}
 
-          <div className="mt-8">
-            <TranscribeRecorder />
+          <div className={isRecordingFocus ? 'mt-0' : 'mt-8'}>
+            <TranscribeRecorder onRecordingFocusChange={setIsRecordingFocus} />
           </div>
         </div>
       </main>

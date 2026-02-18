@@ -72,6 +72,10 @@ interface WindowWithSpeechRecognition extends Window {
   webkitSpeechRecognition?: SpeechRecognitionConstructorLike
 }
 
+interface TranscribeRecorderProps {
+  onRecordingFocusChange?: (active: boolean) => void
+}
+
 function formatElapsed(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -94,6 +98,30 @@ function getSpeechRecognitionCtor(): SpeechRecognitionConstructorLike | null {
   if (typeof window === 'undefined') return null
   const speechWindow = window as WindowWithSpeechRecognition
   return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
+}
+
+function buildFallbackSegmentsFromLiveTranscript(transcript: string): TranscriptSegment[] {
+  const normalized = transcript.replace(/\s+/g, ' ').trim()
+  if (!normalized) return []
+
+  const chunks = normalized
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+
+  let currentMs = 0
+
+  return chunks.map((chunk, index) => {
+    const durationMs = Math.max(2500, Math.min(12000, chunk.length * 70))
+    const segment: TranscriptSegment = {
+      speaker: index % 2 === 0 ? 'patient' : 'clinician',
+      start_ms: currentMs,
+      end_ms: currentMs + durationMs,
+      text: chunk,
+    }
+    currentMs += durationMs
+    return segment
+  })
 }
 
 function dedupeLiveEntities(entities: LiveEntity[]): LiveEntity[] {
@@ -157,7 +185,7 @@ function extractLiveEntities(text: string): LiveEntity[] {
   return dedupeLiveEntities(entities).slice(0, 8)
 }
 
-export function TranscribeRecorder() {
+export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorderProps) {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [liveTranscript, setLiveTranscript] = useState('')
@@ -176,6 +204,7 @@ export function TranscribeRecorder() {
   const timerRef = useRef<number | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const recordingStateRef = useRef<RecordingState>('idle')
+  const fallbackTranscriptRef = useRef('')
 
   useEffect(() => {
     recordingStateRef.current = recordingState
@@ -309,6 +338,7 @@ export function TranscribeRecorder() {
     setLiveEntities([])
     setElapsedSeconds(0)
     recordedChunksRef.current = []
+    fallbackTranscriptRef.current = ''
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     streamRef.current = stream
@@ -338,6 +368,17 @@ export function TranscribeRecorder() {
         await uploadAndTranscribe(blob)
         setRecordingState('idle')
       } catch (error) {
+        const fallbackTranscript = fallbackTranscriptRef.current || liveTranscript
+        const fallbackSegments = buildFallbackSegmentsFromLiveTranscript(fallbackTranscript)
+        if (fallbackSegments.length > 0) {
+          setSegments(fallbackSegments)
+          setErrorMessage(
+            'Server transcription was unavailable, so browser live transcript was used. Please review before saving.'
+          )
+          setRecordingState('idle')
+          return
+        }
+
         const message =
           error instanceof Error ? error.message : 'Unable to transcribe the recording.'
         setErrorMessage(message)
@@ -388,6 +429,7 @@ export function TranscribeRecorder() {
     const recorder = mediaRecorderRef.current
     if (!recorder || recorder.state === 'inactive') return
 
+    fallbackTranscriptRef.current = `${liveTranscript} ${interimTranscript}`.trim()
     stopTimer()
     stopSpeechRecognition()
     setRecordingState('processing')
@@ -432,6 +474,102 @@ export function TranscribeRecorder() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const isRecordingFocus = recordingState === 'recording' || recordingState === 'paused'
+
+  useEffect(() => {
+    onRecordingFocusChange?.(isRecordingFocus)
+
+    return () => {
+      onRecordingFocusChange?.(false)
+    }
+  }, [isRecordingFocus, onRecordingFocusChange])
+
+  if (isRecordingFocus) {
+    return (
+      <div className="space-y-4">
+        <div className="sticky top-0 z-10 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_10px_24px_rgba(36,57,109,0.12)] backdrop-blur-md">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={handleStart}
+              disabled={recordingState === 'recording'}
+              className="bg-sky-500 text-white hover:bg-sky-400"
+            >
+              <Mic size={16} className="mr-2" />
+              {recordingState === 'paused' ? 'Resume' : 'Recording'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePause}
+              disabled={recordingState !== 'recording'}
+              variant="ghost"
+              className="bg-white/70 text-slate-700 hover:bg-white"
+            >
+              <Pause size={16} className="mr-2" />
+              Pause
+            </Button>
+            <Button
+              type="button"
+              onClick={handleStop}
+              disabled={recordingState !== 'recording' && recordingState !== 'paused'}
+              variant="ghost"
+              className="bg-white/70 text-slate-700 hover:bg-white"
+            >
+              <Square size={16} className="mr-2" />
+              Stop
+            </Button>
+
+            <div className="ml-auto flex items-center gap-2 rounded-xl border border-[#e8dcc8] bg-white/70 px-3 py-2 text-sm font-medium text-slate-700">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                  recordingState === 'recording' ? 'bg-red-500' : 'bg-amber-500'
+                }`}
+              />
+              {formatElapsed(elapsedSeconds)}
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-[62vh] rounded-2xl border border-white/70 bg-white/70 p-5 shadow-[0_14px_36px_rgba(36,57,109,0.12)] backdrop-blur-md">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Live Transcript
+          </p>
+          <div className="mt-3 max-h-[58vh] overflow-y-auto pr-1">
+            {liveTranscript || interimTranscript ? (
+              <p className="text-[15px] leading-7 text-slate-800">
+                {liveTranscript}
+                {interimTranscript && (
+                  <span className="italic text-slate-500">{`${interimTranscript} `}</span>
+                )}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500">Listening... speak to see live transcript here.</p>
+            )}
+          </div>
+
+          {liveEntities.length > 0 && (
+            <div className="mt-4 border-t border-slate-200/70 pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Live ML Signals
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {liveEntities.map((entity) => (
+                  <span
+                    key={`${entity.kind}-${entity.name}`}
+                    className="inline-flex items-center rounded-full bg-[#f1e4cc] px-2.5 py-1 text-xs font-medium text-[#59431f]"
+                  >
+                    <span className="mr-1">{entity.emoji}</span>
+                    {entity.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
