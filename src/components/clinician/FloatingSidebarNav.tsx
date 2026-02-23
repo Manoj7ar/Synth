@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
 type FloatingSidebarNavProps = {
   anchor?: 'middle-left' | 'top-left'
   fadeOnScroll?: boolean
+  theme?: 'sand' | 'night'
 }
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -37,6 +38,7 @@ function isActivePath(pathname: string, href: string): boolean {
 export function FloatingSidebarNav({
   anchor = 'middle-left',
   fadeOnScroll = false,
+  theme = 'sand',
 }: FloatingSidebarNavProps) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -52,6 +54,20 @@ export function FloatingSidebarNav({
       ? 'pointer-events-none -translate-y-2 opacity-0'
       : 'translate-y-0 opacity-100'
     : ''
+  const isNight = theme === 'night'
+  const asideBaseClass = isNight
+    ? 'border border-white/[0.12] bg-[rgba(17,17,17,0.75)] shadow-2xl'
+    : 'bg-[#fff8ea]/90 shadow-[0_12px_40px_rgba(114,90,56,0.22)]'
+  const labelClass = isNight ? 'text-slate-400' : 'text-slate-500'
+  const toggleButtonClass = isNight
+    ? 'border border-white/[0.08] bg-white/[0.06] text-slate-100 hover:bg-white/[0.1]'
+    : 'bg-white/70 text-slate-700 hover:bg-white'
+  const inactiveItemClass = isNight
+    ? 'border border-white/[0.08] bg-white/[0.06] text-slate-100 hover:bg-white/[0.1]'
+    : 'bg-white/70 text-slate-700 hover:bg-white'
+  const activeItemClass = isNight
+    ? 'bg-cyan-400 text-slate-950'
+    : 'bg-sky-500 text-white'
 
   useEffect(() => {
     const detail: FloatingSidebarStateDetail = { open: sidebarOpen }
@@ -74,19 +90,19 @@ export function FloatingSidebarNav({
 
   return (
     <aside
-      className={`fixed z-20 rounded-2xl bg-[#fff8ea]/90 shadow-[0_12px_40px_rgba(114,90,56,0.22)] backdrop-blur-xl transition-all duration-300 ${anchorClass} ${
+      className={`fixed z-20 rounded-2xl backdrop-blur-xl transition-all duration-300 ${anchorClass} ${asideBaseClass} ${
         sidebarOpen ? 'w-56 p-3' : 'w-14 p-2'
       } ${hideWithScroll ? 'pointer-events-none -translate-y-2 opacity-0' : scrollFadeClass}`}
     >
       <div className="flex items-center justify-between">
         {sidebarOpen && (
-          <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <p className={`px-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${labelClass}`}>
             Navigation
           </p>
         )}
         <button
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 text-slate-700 transition hover:bg-white"
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl transition ${toggleButtonClass}`}
           onClick={() => setSidebarOpen((open) => !open)}
           aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
@@ -105,7 +121,7 @@ export function FloatingSidebarNav({
                 key={item.key}
                 href={item.href}
                 className={`flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
-                  active ? 'bg-sky-500 text-white' : 'bg-white/70 text-slate-700 hover:bg-white'
+                  active ? activeItemClass : inactiveItemClass
                 }`}
               >
                 <Icon size={16} className="mr-2" />
