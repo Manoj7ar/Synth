@@ -1,4 +1,4 @@
-import { testConnection, ensureConnection } from '../src/lib/elasticsearch/client'
+import { ensureConnection } from '../src/lib/elasticsearch/client'
 import { createIndices } from '../src/lib/elasticsearch/indices'
 import { setupMedicalNERPipeline } from '../src/lib/elasticsearch/ml'
 import { createAllTools } from '../src/lib/kibana/tools'
@@ -23,8 +23,8 @@ async function bootstrap() {
     console.log('ML pipeline ready\n')
 
     console.log('Step 4: Creating Agent Builder tools...')
-    const tools = await createAllTools()
-    const toolIds = tools.map((t: any) => t.id)
+    const tools = (await createAllTools()) as Array<{ id: string }>
+    const toolIds = tools.map((t) => t.id)
     console.log(`Created ${toolIds.length} tools\n`)
 
     console.log('Step 5: Creating AI agents...')

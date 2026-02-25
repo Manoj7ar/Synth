@@ -121,8 +121,8 @@ function VisualizationCard({
             <XAxis dataKey="label" stroke="#7a6a53" tick={{ fontSize: 11 }} />
             <YAxis domain={['dataMin - 8', 'dataMax + 8']} stroke="#7a6a53" tick={{ fontSize: 11 }} />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                `${value} mmHg`,
+              formatter={(value: number | undefined, name: string | undefined) => [
+                `${value ?? '-'} mmHg`,
                 name === 'systolic' ? 'Systolic' : 'Diastolic',
               ]}
               labelFormatter={(label) => `Visit: ${label}`}

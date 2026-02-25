@@ -1,18 +1,14 @@
 'use client'
 
-import { useState } from 'react'
 import { TranscriptChunk } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Mic, User } from 'lucide-react'
 
 interface TranscriptEditorProps {
   chunks: TranscriptChunk[]
-  onUpdate?: (chunks: TranscriptChunk[]) => void
 }
 
-export function TranscriptEditor({ chunks, onUpdate }: TranscriptEditorProps) {
-  const [editingChunkId, setEditingChunkId] = useState<string | null>(null)
-
+export function TranscriptEditor({ chunks }: TranscriptEditorProps) {
   const formatTimestamp = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)

@@ -22,7 +22,7 @@ export class KibanaClient {
     }
   }
 
-  async request(method: string, path: string, body?: any) {
+  async request<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
     if (!KIBANA_URL || !KIBANA_API_KEY) {
       throw new Error('Kibana not configured')
     }
@@ -40,19 +40,19 @@ export class KibanaClient {
       throw new Error(`Kibana API error ${response.status}: ${error}`)
     }
 
-    return response.json()
+    return (await response.json()) as T
   }
 
   async get(path: string) {
     return this.request('GET', path)
   }
 
-  async post(path: string, body: any) {
-    return this.request('POST', path, body)
+  async post<T = unknown>(path: string, body: unknown) {
+    return this.request<T>('POST', path, body)
   }
 
-  async put(path: string, body: any) {
-    return this.request('PUT', path, body)
+  async put<T = unknown>(path: string, body: unknown) {
+    return this.request<T>('PUT', path, body)
   }
 
   async delete(path: string) {

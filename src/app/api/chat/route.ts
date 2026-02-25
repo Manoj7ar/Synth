@@ -182,7 +182,7 @@ async function resolveAccess({
   patientId,
   visitId,
 }: {
-  session: Awaited<ReturnType<typeof getServerSession>>
+  session: { user?: { role?: string; id?: string } } | null
   shareToken: string | null
   patientId: string
   visitId: string
@@ -499,7 +499,7 @@ function extractVisitBloodPressure(patientVisit: {
     systolic: selected.systolic,
     diastolic: selected.diastolic,
     source: selected.source,
-    timestamp: selected.timestamp,
+    timestamp: 'timestamp' in selected ? selected.timestamp : undefined,
     excerpt: selected.excerpt,
   }
 }

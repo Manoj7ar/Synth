@@ -5,9 +5,16 @@ import { prisma } from '@/lib/prisma'
 import { TranscriptEditor } from '@/components/visit/TranscriptEditor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import type { TranscriptChunk as EditorTranscriptChunk } from '@/types'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { FinalizeButton } from './FinalizeButton'
+
+type VisitTranscriptChunk = EditorTranscriptChunk & {
+  id?: string
+  visit_id?: string
+  patient_id?: string
+}
 
 export default async function VisitPage({ params }: { params: Promise<{ visitId: string }> }) {
   const session = await getServerSession(authOptions)
@@ -28,10 +35,13 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
   }
 
   // Try to get chunks from ES first
-  let chunks: any[] = []
+  let chunks: VisitTranscriptChunk[] = []
   try {
     const { getAllTranscriptChunks } = await import('@/lib/elasticsearch/search')
-    chunks = await getAllTranscriptChunks(visit.id, visit.patientId)
+    chunks = (await getAllTranscriptChunks(
+      visit.id,
+      visit.patientId
+    )) as unknown as VisitTranscriptChunk[]
   } catch {
     // ES not available
   }
@@ -56,7 +66,7 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
             chunk_id: `${visit.id}-chunk-${idx}`,
             visit_id: visit.id,
             patient_id: visit.patientId,
-            speaker: seg.speaker,
+            speaker: seg.speaker === 'clinician' ? 'clinician' : 'patient',
             start_ms: seg.start_ms,
             end_ms: seg.end_ms,
             text: seg.text,
@@ -163,9 +173,11 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
                       <div className="font-medium mb-2">Medications</div>
                       <div className="flex flex-wrap gap-2">
                         {chunks
-                          .flatMap((c: any) => c.ml_entities?.medications || [])
-                          .filter((med: any, idx: number, arr: any[]) => arr.findIndex((m: any) => m.name === med.name) === idx)
-                          .map((med: any, idx: number) => (
+                          .flatMap((c) => c.ml_entities?.medications || [])
+                          .filter(
+                            (med, idx, arr) => arr.findIndex((candidate) => candidate.name === med.name) === idx
+                          )
+                          .map((med, idx: number) => (
                             <Badge key={idx} variant="default" className="bg-green-500 text-white border-0">
                               {med.name}
                             </Badge>
@@ -177,9 +189,11 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
                       <div className="font-medium mb-2">Symptoms</div>
                       <div className="flex flex-wrap gap-2">
                         {chunks
-                          .flatMap((c: any) => c.ml_entities?.symptoms || [])
-                          .filter((sym: any, idx: number, arr: any[]) => arr.findIndex((s: any) => s.name === sym.name) === idx)
-                          .map((sym: any, idx: number) => (
+                          .flatMap((c) => c.ml_entities?.symptoms || [])
+                          .filter(
+                            (sym, idx, arr) => arr.findIndex((candidate) => candidate.name === sym.name) === idx
+                          )
+                          .map((sym, idx: number) => (
                             <Badge key={idx} variant="default" className="bg-yellow-500 text-white border-0">
                               {sym.name}
                             </Badge>
@@ -191,8 +205,8 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
                       <div className="font-medium mb-2">Vitals</div>
                       <div className="space-y-1">
                         {chunks
-                          .flatMap((c: any) => c.ml_entities?.vitals || [])
-                          .map((vital: any, idx: number) => (
+                          .flatMap((c) => c.ml_entities?.vitals || [])
+                          .map((vital, idx: number) => (
                             <div key={idx} className="text-xs bg-blue-50 p-2 rounded">
                               <span className="font-medium">{vital.type}:</span> {vital.value}
                             </div>

@@ -7,7 +7,6 @@ import {
   Loader2,
   Mic,
   Paperclip,
-  Sparkles,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/soap-notes/MarkdownRenderer";
 

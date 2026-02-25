@@ -1,3 +1,4 @@
+import type { estypes } from '@elastic/elasticsearch'
 import { esClient } from './client'
 
 const INDEX_PREFIX = 'synth_'
@@ -169,7 +170,10 @@ export async function createIndices() {
   console.log('All indices created!\n')
 }
 
-async function createIndexIfNotExists(indexName: string, mappings: any) {
+async function createIndexIfNotExists(
+  indexName: string,
+  mappings: { properties: Record<string, estypes.MappingProperty> }
+) {
   try {
     const exists = await esClient.indices.exists({ index: indexName })
     

@@ -9,10 +9,21 @@ interface FinalizeButtonProps {
   visitId: string
 }
 
+interface FinalizeVisitResponse {
+  success: boolean
+  shareLink?: string
+  artifacts?: {
+    afterVisitSummary: string
+    soapDraft: string
+    medications: number
+    symptoms: number
+  }
+}
+
 export function FinalizeButton({ visitId }: FinalizeButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<FinalizeVisitResponse | null>(null)
   const [error, setError] = useState('')
 
   const handleFinalize = async () => {
@@ -34,8 +45,8 @@ export function FinalizeButton({ visitId }: FinalizeButtonProps) {
       const data = await res.json()
       setResult(data)
       router.refresh()
-    } catch (err: any) {
-      setError(err.message || 'Failed to finalize visit')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to finalize visit')
     } finally {
       setLoading(false)
     }

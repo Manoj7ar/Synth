@@ -1,6 +1,26 @@
 import { esClient } from './client'
 import { INDICES } from './indices'
 
+type TermsBucket = { key: string; doc_count: number }
+type DateBucket = { key_as_string: string; doc_count: number }
+
+type VisitAnalyticsAggregations = {
+  total_visits?: { value?: number }
+  medications_agg?: { top_medications?: { buckets?: TermsBucket[] } }
+  symptoms_agg?: { top_symptoms?: { buckets?: TermsBucket[] } }
+  visits_over_time?: { buckets?: DateBucket[] }
+}
+
+type MedicationPatternAggregations = {
+  dosages?: { dosage_distribution?: { buckets?: TermsBucket[] } }
+  by_patient?: { buckets?: TermsBucket[] }
+}
+
+function normalizeHitsTotal(total: number | { value: number } | undefined): number {
+  if (typeof total === 'number') return total
+  return total?.value ?? 0
+}
+
 export async function getVisitAnalytics() {
   try {
     const result = await esClient.search({
@@ -53,19 +73,19 @@ export async function getVisitAnalytics() {
       }
     })
 
-    const aggs = result.aggregations as any
+    const aggs = result.aggregations as unknown as VisitAnalyticsAggregations
 
     return {
       totalVisits: aggs?.total_visits?.value ?? 0,
-      topMedications: (aggs?.medications_agg?.top_medications?.buckets ?? []).map((b: any) => ({
+      topMedications: (aggs?.medications_agg?.top_medications?.buckets ?? []).map((b) => ({
         name: b.key,
         count: b.doc_count
       })),
-      topSymptoms: (aggs?.symptoms_agg?.top_symptoms?.buckets ?? []).map((b: any) => ({
+      topSymptoms: (aggs?.symptoms_agg?.top_symptoms?.buckets ?? []).map((b) => ({
         name: b.key,
         count: b.doc_count
       })),
-      visitsOverTime: (aggs?.visits_over_time?.buckets ?? []).map((b: any) => ({
+      visitsOverTime: (aggs?.visits_over_time?.buckets ?? []).map((b) => ({
         date: b.key_as_string,
         count: b.doc_count
       }))
@@ -118,9 +138,11 @@ export async function getMedicationPatternAnalysis(medicationName: string) {
     size: 0
   })
 
+  const aggs = result.aggregations as unknown as MedicationPatternAggregations
+
   return {
-    totalMentions: result.hits.total,
-    dosages: (result.aggregations as any)?.dosages?.dosage_distribution?.buckets ?? [],
-    uniquePatients: (result.aggregations as any)?.by_patient?.buckets?.length ?? 0
+    totalMentions: normalizeHitsTotal(result.hits.total as number | { value: number } | undefined),
+    dosages: aggs?.dosages?.dosage_distribution?.buckets ?? [],
+    uniquePatients: aggs?.by_patient?.buckets?.length ?? 0
   }
 }

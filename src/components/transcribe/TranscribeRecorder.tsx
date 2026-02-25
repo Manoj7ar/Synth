@@ -477,6 +477,9 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
   }
 
   const isRecordingFocus = recordingState === 'recording' || recordingState === 'paused'
+  const isPaused = recordingState === 'paused'
+  const isRecording = recordingState === 'recording'
+  const canStopRecording = isRecordingFocus
 
   useEffect(() => {
     onRecordingFocusChange?.(isRecordingFocus)
@@ -498,12 +501,12 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
               className="rounded-full bg-cyan-300 px-4 text-slate-950 hover:bg-cyan-200"
             >
               <Mic size={16} className="mr-2" />
-              {recordingState === 'paused' ? 'Resume' : 'Recording'}
+              {isPaused ? 'Resume' : 'Recording'}
             </Button>
             <Button
               type="button"
               onClick={handlePause}
-              disabled={recordingState !== 'recording'}
+              disabled={!isRecording}
               variant="ghost"
               className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
@@ -513,7 +516,7 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
             <Button
               type="button"
               onClick={handleStop}
-              disabled={recordingState !== 'recording' && recordingState !== 'paused'}
+              disabled={!canStopRecording}
               variant="ghost"
               className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
@@ -524,7 +527,7 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
             <div className="ml-auto flex items-center gap-2 rounded-2xl border border-[#eadfcd] bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700">
               <span
                 className={`inline-block h-2.5 w-2.5 rounded-full ${
-                  recordingState === 'recording' ? 'bg-red-500' : 'bg-amber-500'
+                  isRecording ? 'bg-red-500' : 'bg-amber-500'
                 }`}
               />
               {formatElapsed(elapsedSeconds)}
@@ -636,12 +639,12 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
               className="rounded-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"
             >
               <Mic size={16} className="mr-2" />
-              {recordingState === 'paused' ? 'Resume' : 'Start'}
+              {isPaused ? 'Resume' : 'Start'}
             </Button>
             <Button
               type="button"
               onClick={handlePause}
-              disabled={recordingState !== 'recording'}
+              disabled={!isRecording}
               variant="ghost"
               className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
@@ -651,7 +654,7 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
             <Button
               type="button"
               onClick={handleStop}
-              disabled={recordingState !== 'recording' && recordingState !== 'paused'}
+              disabled={!canStopRecording}
               variant="ghost"
               className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
@@ -669,7 +672,7 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
                 <>
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      recordingState === 'recording' ? 'bg-red-500' : 'bg-slate-400'
+                      isRecording ? 'bg-red-500' : 'bg-slate-400'
                     }`}
                   />
                   {formatElapsed(elapsedSeconds)}

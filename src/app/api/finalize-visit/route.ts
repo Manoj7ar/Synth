@@ -6,6 +6,54 @@ import { esClient } from '@/lib/elasticsearch/client'
 import { getAllTranscriptChunks, getMedicationsFromVisit } from '@/lib/elasticsearch/search'
 import { INDICES } from '@/lib/elasticsearch/indices'
 
+type MedicationSummary = {
+  name: string
+  dosage?: string
+  frequency?: string
+  confidence?: number
+  mentions?: number
+}
+
+type SymptomSummary = {
+  name: string
+  severity?: string
+  confidence?: number
+}
+
+type ProcedureSummary = {
+  name: string
+  confidence?: number
+}
+
+type VitalSummary = {
+  type: string
+  value: string
+  confidence?: number
+}
+
+type TranscriptChunk = {
+  chunk_id: string
+  visit_id: string
+  patient_id: string
+  speaker: string
+  start_ms: number
+  end_ms: number
+  text: string
+  ml_entities?: {
+    medications?: MedicationSummary[]
+    symptoms?: SymptomSummary[]
+    procedures?: ProcedureSummary[]
+    vitals?: VitalSummary[]
+  }
+}
+
+type FollowupItem = {
+  task: string
+  timestamp_ms: number
+  priority: 'high' | 'medium'
+  timing: string
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -33,13 +81,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Get transcript chunks from ES, or fall back to Prisma VisitDocumentation + local ML
-    let chunks: any[] = []
-    let medications: any[] = []
+    let chunks: TranscriptChunk[] = []
+    let medications: MedicationSummary[] = []
     
     // Try ES first
-    chunks = await getAllTranscriptChunks(visitId, visit.patientId)
+    chunks = (await getAllTranscriptChunks(visitId, visit.patientId)) as unknown as TranscriptChunk[]
     if (chunks.length > 0) {
-      medications = await getMedicationsFromVisit(visitId, visit.patientId)
+      medications = (await getMedicationsFromVisit(visitId, visit.patientId)) as MedicationSummary[]
     }
 
     // Fall back to Prisma transcript + local entity extraction
@@ -76,13 +124,14 @@ export async function POST(req: NextRequest) {
           })
         )
 
-        const medMap = new Map<string, any>()
+        const medMap = new Map<string, MedicationSummary & { mentions: number }>()
         for (const chunk of chunks) {
-          for (const med of (chunk.ml_entities?.medications || [])) {
+          for (const med of chunk.ml_entities?.medications || []) {
             if (!medMap.has(med.name)) {
               medMap.set(med.name, { name: med.name, dosage: med.dosage, frequency: med.frequency, mentions: 1 })
             } else {
-              medMap.get(med.name).mentions++
+              const existing = medMap.get(med.name)
+              if (existing) existing.mentions += 1
             }
           }
         }
@@ -97,14 +146,14 @@ export async function POST(req: NextRequest) {
     // Aggregate all ML entities from chunks
     const allSymptoms = new Set<string>()
     const allProcedures = new Set<string>()
-    const allVitals: any[] = []
+    const allVitals: VitalSummary[] = []
 
     for (const chunk of chunks) {
       if (chunk.ml_entities?.symptoms) {
-        chunk.ml_entities.symptoms.forEach((s: any) => allSymptoms.add(s.name))
+        chunk.ml_entities.symptoms.forEach((s) => allSymptoms.add(s.name))
       }
       if (chunk.ml_entities?.procedures) {
-        chunk.ml_entities.procedures.forEach((p: any) => allProcedures.add(p.name))
+        chunk.ml_entities.procedures.forEach((p) => allProcedures.add(p.name))
       }
       if (chunk.ml_entities?.vitals) {
         allVitals.push(...chunk.ml_entities.vitals)
@@ -216,11 +265,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function generateAfterVisitSummary(chunks: any[], medications: any[], symptoms: string[]) {
+function generateAfterVisitSummary(
+  chunks: TranscriptChunk[],
+  medications: MedicationSummary[],
+  symptoms: string[]
+) {
   const patientStatements = chunks
-    .filter((c: any) => c.speaker === 'patient')
+    .filter((c) => c.speaker === 'patient')
     .slice(0, 3)
-    .map((c: any) => c.text)
+    .map((c) => c.text)
 
   return `# Your Visit Summary
 
@@ -229,7 +282,7 @@ ${patientStatements.map((s: string) => `- ${s}`).join('\n')}
 
 ## Medications Prescribed
 ${medications.length > 0
-  ? medications.map((m: any) => `- **${m.name}** ${m.dosage || ''} ${m.frequency || ''}`).join('\n')
+  ? medications.map((m) => `- **${m.name}** ${m.dosage || ''} ${m.frequency || ''}`).join('\n')
   : '- No new medications prescribed'}
 
 ## Symptoms Discussed
@@ -248,15 +301,20 @@ ${symptoms.length > 0
 - Keep track of your blood pressure/symptoms as discussed`
 }
 
-function generateSOAPNote(chunks: any[], medications: any[], symptoms: string[], vitals: any[]) {
+function generateSOAPNote(
+  chunks: TranscriptChunk[],
+  medications: MedicationSummary[],
+  symptoms: string[],
+  vitals: VitalSummary[]
+) {
   const subjective = chunks
-    .filter((c: any) => c.speaker === 'patient')
+    .filter((c) => c.speaker === 'patient')
     .slice(0, 5)
-    .map((c: any) => c.text)
+    .map((c) => c.text)
     .join(' ')
 
   const objective = [
-    vitals.length > 0 ? `Vitals: ${vitals.map((v: any) => `${v.type}: ${v.value}`).join(', ')}` : '',
+    vitals.length > 0 ? `Vitals: ${vitals.map((v) => `${v.type}: ${v.value}`).join(', ')}` : '',
     symptoms.length > 0 ? `Symptoms: ${symptoms.join(', ')}` : ''
   ].filter(Boolean).join('\n')
 
@@ -275,7 +333,7 @@ Chief complaint: ${symptoms[0] || 'Follow-up visit'}
 ${symptoms.length > 1 ? `Additional concerns: ${symptoms.slice(1).join(', ')}` : ''}
 
 ## P (Plan)
-${medications.length > 0 ? `**Medications:**\n${medications.map((m: any) => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}`).join('\n')}` : ''}
+${medications.length > 0 ? `**Medications:**\n${medications.map((m) => `- ${m.name} ${m.dosage || ''} ${m.frequency || ''}`).join('\n')}` : ''}
 
 **Follow-up:** As discussed with patient
 
@@ -284,16 +342,16 @@ ${medications.length > 0 ? `**Medications:**\n${medications.map((m: any) => `- $
 _Note: This is a draft. Please review and complete before finalizing._`
 }
 
-function extractFollowups(chunks: any[]) {
+function extractFollowups(chunks: TranscriptChunk[]) {
   const followupKeywords = [
     'follow up', 'follow-up', 'come back', 'return', 
     'schedule', 'appointment', 'blood test', 'blood work',
     'next week', 'two weeks', 'next visit'
   ]
 
-  const followups: any[] = []
+  const followups: FollowupItem[] = []
 
-  chunks.forEach((chunk: any) => {
+  chunks.forEach((chunk) => {
     const lower = chunk.text.toLowerCase()
     const hasFollowup = followupKeywords.some(kw => lower.includes(kw))
     
