@@ -43,6 +43,8 @@ const HeroSection: React.FC = () => {
   const [transcriptText, setTranscriptText] = useState("");
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isTranscriptInputExpanded, setIsTranscriptInputExpanded] =
+    useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<LandingSoapPreviewResponse | null>(null);
@@ -56,6 +58,8 @@ const HeroSection: React.FC = () => {
   const canGenerate =
     !isGenerating &&
     (activeTab === "transcript" ? hasTranscriptInput : hasAudioInput);
+  const shouldExpandTranscriptInput =
+    isTranscriptInputExpanded || transcriptText.trim().length > 0;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -222,8 +226,23 @@ const HeroSection: React.FC = () => {
                 <textarea
                   value={transcriptText}
                   onChange={(e) => setTranscriptText(e.target.value)}
-                  placeholder="Paste a doctor-patient transcript here (or attach a .txt/.md/.json transcript file)..."
-                  className="min-h-[140px] w-full resize-y rounded-[14px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
+                  onFocus={() => setIsTranscriptInputExpanded(true)}
+                  onBlur={() => {
+                    if (!transcriptText.trim()) {
+                      setIsTranscriptInputExpanded(false);
+                    }
+                  }}
+                  rows={1}
+                  placeholder={
+                    shouldExpandTranscriptInput
+                      ? "Paste a doctor-patient transcript here, or attach a .txt/.md/.json transcript file..."
+                      : "Paste transcript or attach file..."
+                  }
+                  className={`w-full rounded-[14px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-[height,min-height] duration-200 placeholder:text-slate-400 ${
+                    shouldExpandTranscriptInput
+                      ? "min-h-[140px] resize-y leading-6"
+                      : "h-12 resize-none overflow-hidden leading-6"
+                  }`}
                 />
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">

@@ -25,10 +25,10 @@ const ProcessSteps = () => {
 
       <div className="container relative z-10 mx-auto max-w-[1200px]">
         <div className="text-center mb-24 space-y-6 max-w-3xl mx-auto">
-          <h2 className="text-[48px] md:text-[60px] leading-[1.1] tracking-tight">
-            How does this <span className="text-[#38bdf8]">work?</span>
+          <h2 className="text-[52px] md:text-[68px] leading-[1.1] tracking-tight text-white">
+            How does this <span className="text-white">work?</span>
           </h2>
-          <p className="text-lg leading-relaxed text-slate-700">
+          <p className="text-xl leading-relaxed text-white">
             Import a transcript, let Synth extract medical entities, generate notes, and power a
             patient chat agent grounded in visit evidence.
           </p>
