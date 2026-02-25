@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '@prisma/client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import bcrypt from 'bcryptjs'
 import { NextResponse } from 'next/server'
 import { createPrismaClient, prisma } from '@/lib/prisma'
@@ -13,7 +13,7 @@ function normalizeText(value: unknown) {
 }
 
 async function createAccountWithClient(
-  client: PrismaClient,
+  client: any,
   input: { name: string; email: string; password: string }
 ) {
   const existing = await client.user.findUnique({
@@ -81,17 +81,24 @@ export async function POST(req: Request) {
     return await createAccountWithClient(prisma, { name, email, password })
   } catch (error) {
     console.error('Signup error:', error)
+    const errorCode =
+      typeof error === 'object' && error && 'code' in error ? String((error as any).code) : ''
+    const errorMessage =
+      error instanceof Error ? error.message : typeof error === 'string' ? error : ''
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return NextResponse.json(
-          { error: 'An account with this email already exists' },
-          { status: 409 }
-        )
-      }
+    if (errorCode === 'P2002' || errorCode === '23505') {
+      return NextResponse.json(
+        { error: 'An account with this email already exists' },
+        { status: 409 }
+      )
     }
 
-    if (error instanceof Prisma.PrismaClientInitializationError) {
+    if (
+      errorCode === 'P1001' ||
+      errorCode === 'P1000' ||
+      errorCode === '57P01' ||
+      /database|connection|supabase/i.test(errorMessage)
+    ) {
       try {
         const retryClient = createPrismaClient()
         await retryClient.$connect()

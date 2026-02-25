@@ -1,5 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const SARAH_TESTER_EMAIL = 'admin@synth.health'
 export const SARAH_DEMO_PATIENT_NAME = 'Sarah Johnson'
 
@@ -95,7 +94,7 @@ const SARAH_DEMO_ADDITIONAL_NOTES =
   'Demo record for tester walkthrough. Patient education reinforced on blood pressure logging, medication adherence, and urgent return precautions.'
 
 export async function ensureSarahDemoSoapNoteForClinician(
-  prisma: PrismaClient,
+  prisma: any,
   clinicianId: string
 ) {
   const existing = await prisma.visitDocumentation.findFirst({
@@ -159,4 +158,3 @@ export async function ensureSarahDemoSoapNoteForClinician(
     return documentation
   })
 }
-

@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { ensureSarahDemoSoapNoteForClinician } from '../src/lib/demo/sarah-soap-note'
+import { createPrismaClient } from '../src/lib/prisma'
 
-const prisma = new PrismaClient()
+const prisma = createPrismaClient()
 
 async function main() {
   console.log('Seeding database...')
