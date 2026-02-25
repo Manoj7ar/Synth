@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -70,6 +71,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, user }, { status: 201 })
   } catch (error) {
     console.error('Signup error:', error)
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'An account with this email already exists' },
+          { status: 409 }
+        )
+      }
+    }
+
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json(
+        { error: 'Database connection error. Please try again in a moment.' },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json({ error: 'Unable to create account right now' }, { status: 500 })
   }
 }
