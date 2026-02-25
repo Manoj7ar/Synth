@@ -382,7 +382,7 @@ Respond helpfully and safely.`
 }
 
 async function loadVisitContext(visitId: string): Promise<VisitContext | null> {
-  const visit = await prisma.visit.findUnique({
+  const visit = (await prisma.visit.findUnique({
     where: { id: visitId },
     include: {
       patient: true,
@@ -396,7 +396,30 @@ async function loadVisitContext(visitId: string): Promise<VisitContext | null> {
         take: 40,
       },
     },
-  })
+  })) as
+    | {
+        id: string
+        patientId: string
+        patient: { displayName: string }
+        documentation: {
+          transcriptJson: string
+          summary: string
+          soapNotes: string
+          additionalNotes: string | null
+        } | null
+        appointments: Array<{
+          title: string
+          scheduledFor: Date
+          notes: string | null
+        }>
+        carePlanItems: Array<{
+          title: string
+          details: string | null
+          dueAt: Date | null
+          status: string
+        }>
+      }
+    | null
 
   if (!visit) return null
 
@@ -409,7 +432,15 @@ async function loadVisitContext(visitId: string): Promise<VisitContext | null> {
     take: 10,
   })
 
-  const bpHistory = patientVisits
+  const bpHistory = (patientVisits as Array<{
+    id: string
+    startedAt: Date
+    documentation: {
+      summary: string
+      soapNotes: string
+      transcriptJson: string
+    } | null
+  }>)
     .map((patientVisit) => extractVisitBloodPressure(patientVisit))
     .filter((point): point is BloodPressurePoint => point !== null)
     .sort((a, b) => a.visitDate.getTime() - b.visitDate.getTime())

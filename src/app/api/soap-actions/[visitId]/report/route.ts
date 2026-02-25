@@ -188,7 +188,7 @@ export async function POST(
       additionalNotes,
     })
 
-    const report: ReportRecord = await prisma.generatedReport.create({
+    const report = (await prisma.generatedReport.create({
       data: {
         visitId: visit.id,
         patientId: visit.patientId,
@@ -203,7 +203,7 @@ export async function POST(
         createdAt: true,
         updatedAt: true,
       },
-    })
+    })) as ReportRecord
 
     return NextResponse.json({ success: true, report })
   } catch (error) {

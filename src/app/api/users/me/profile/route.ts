@@ -109,7 +109,16 @@ export async function PATCH(req: Request) {
       },
     })
 
-    return NextResponse.json(serializeProfile(updated))
+    return NextResponse.json(
+      serializeProfile(
+        updated as {
+          name: string | null
+          practiceName: string | null
+          specialty: string | null
+          onboardingCompletedAt: Date | null
+        }
+      )
+    )
   } catch (error) {
     console.error('Update profile error:', error)
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })

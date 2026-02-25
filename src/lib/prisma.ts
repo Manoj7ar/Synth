@@ -4,6 +4,27 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseAdminClient, getSupabaseAdminClient } from '@/lib/supabase-admin'
 
 type AnyRecord = Record<string, any>
+type DbDelegate = {
+  findUnique: (args?: AnyRecord) => Promise<AnyRecord | null>
+  findFirst: (args?: AnyRecord) => Promise<AnyRecord | null>
+  findMany: (args?: AnyRecord) => Promise<AnyRecord[]>
+  create: (args?: AnyRecord) => Promise<AnyRecord>
+  update: (args?: AnyRecord) => Promise<AnyRecord>
+  upsert: (args?: AnyRecord) => Promise<AnyRecord>
+}
+type DbAdapter = {
+  $connect: () => Promise<void>
+  $disconnect: () => Promise<void>
+  $transaction: <T>(callback: (tx: DbAdapter) => Promise<T>) => Promise<T>
+  user: DbDelegate
+  patient: DbDelegate
+  visit: DbDelegate
+  visitDocumentation: DbDelegate
+  shareLink: DbDelegate
+  appointment: DbDelegate
+  carePlanItem: DbDelegate
+  generatedReport: DbDelegate
+}
 type DbErrorLike = { code?: string; message?: string; details?: string | null; hint?: string | null }
 
 type OrderByInput =
@@ -150,7 +171,7 @@ function prepareUpdate(table: string, data: AnyRecord) {
   return serializeForDb(payload)
 }
 
-function selectAll<T = AnyRecord>(client: SupabaseClient<any>, table: string) {
+function selectAll(client: SupabaseClient<any>, table: string) {
   return client.from(table).select('*') as any
 }
 
@@ -273,7 +294,7 @@ async function listVisitsWithRelations(
     for (const visit of withRelations) {
       let links = allLinks.filter((link) => link.visitId === visit.id)
       const shareOpts = include.shareLinks
-      if (isPlainObject(shareOpts) && shareOpts.where) {
+      if (isPlainObject(shareOpts) && isPlainObject(shareOpts.where)) {
         if ('revokedAt' in shareOpts.where && shareOpts.where.revokedAt === null) {
           links = links.filter((link) => link.revokedAt === null)
         }
@@ -290,10 +311,13 @@ async function listVisitsWithRelations(
     for (const visit of withRelations) {
       let appointments = allAppointments.filter((row) => row.visitId === visit.id)
       const apptOpts = include.appointments
-      if (isPlainObject(apptOpts) && apptOpts.where && isPlainObject(apptOpts.where.scheduledFor)) {
-        const gte = apptOpts.where.scheduledFor.gte
+      const apptWhere =
+        isPlainObject(apptOpts) && isPlainObject(apptOpts.where) ? apptOpts.where : null
+      if (apptWhere && isPlainObject(apptWhere.scheduledFor)) {
+        const gte = apptWhere.scheduledFor.gte
         if (gte) {
-          const threshold = gte instanceof Date ? gte.getTime() : new Date(gte).getTime()
+          const threshold =
+            gte instanceof Date ? gte.getTime() : new Date(String(gte)).getTime()
           appointments = appointments.filter(
             (row) => row.scheduledFor instanceof Date && row.scheduledFor.getTime() >= threshold
           )
@@ -374,20 +398,32 @@ async function listDocsWithVisitRelations(
   return filteredDocs
 }
 
-function createAdapter(client: SupabaseClient<any>) {
-  const adapter: AnyRecord = {
+function createAdapter(client: SupabaseClient<any>): DbAdapter {
+  const unsupported = (name: string) => async () => {
+    throw new Error(`Unsupported adapter method: ${name}`)
+  }
+  const makeDelegate = (partial: AnyRecord, label: string): DbDelegate => ({
+    findUnique: (partial.findUnique as DbDelegate['findUnique']) ?? unsupported(`${label}.findUnique`),
+    findFirst: (partial.findFirst as DbDelegate['findFirst']) ?? unsupported(`${label}.findFirst`),
+    findMany: (partial.findMany as DbDelegate['findMany']) ?? unsupported(`${label}.findMany`),
+    create: (partial.create as DbDelegate['create']) ?? unsupported(`${label}.create`),
+    update: (partial.update as DbDelegate['update']) ?? unsupported(`${label}.update`),
+    upsert: (partial.upsert as DbDelegate['upsert']) ?? unsupported(`${label}.upsert`),
+  } as DbDelegate)
+
+  const adapter: DbAdapter = {
     async $connect() {
       return
     },
     async $disconnect() {
       return
     },
-    async $transaction(callback: (tx: AnyRecord) => Promise<any>) {
+    async $transaction<T>(callback: (tx: DbAdapter) => Promise<T>) {
       // Supabase REST has no multi-step transaction primitive here; preserve call shape.
       return callback(createAdapter(client))
     },
 
-    user: {
+    user: makeDelegate({
       async findUnique(args: AnyRecord) {
         const where = args?.where ?? {}
         if (where.id) return fetchByEq(client, TABLES.user, 'id', where.id)
@@ -414,15 +450,15 @@ function createAdapter(client: SupabaseClient<any>) {
         }
         return insertRow(client, TABLES.user, args?.create ?? {})
       },
-    },
+    }, 'user'),
 
-    patient: {
+    patient: makeDelegate({
       async create(args: AnyRecord) {
         return insertRow(client, TABLES.patient, args?.data ?? {})
       },
-    },
+    }, 'patient'),
 
-    visit: {
+    visit: makeDelegate({
       async findUnique(args: AnyRecord) {
         const where = args?.where ?? {}
         const visit = where.id
@@ -474,9 +510,9 @@ function createAdapter(client: SupabaseClient<any>) {
         if (!args?.where?.id) throw new Error('Visit.update requires where.id')
         return updateByEq(client, TABLES.visit, 'id', args.where.id, args?.data ?? {})
       },
-    },
+    }, 'visit'),
 
-    visitDocumentation: {
+    visitDocumentation: makeDelegate({
       async findUnique(args: AnyRecord) {
         const where = args?.where ?? {}
         let doc = null
@@ -530,9 +566,9 @@ function createAdapter(client: SupabaseClient<any>) {
         }
         throw new Error('VisitDocumentation.update requires where.id or where.visitId')
       },
-    },
+    }, 'visitDocumentation'),
 
-    shareLink: {
+    shareLink: makeDelegate({
       async findUnique(args: AnyRecord) {
         const where = args?.where ?? {}
         let row = null
@@ -567,9 +603,9 @@ function createAdapter(client: SupabaseClient<any>) {
       async create(args: AnyRecord) {
         return insertRow(client, TABLES.shareLink, args?.data ?? {})
       },
-    },
+    }, 'shareLink'),
 
-    appointment: {
+    appointment: makeDelegate({
       async findMany(args: AnyRecord = {}) {
         const where = args.where ?? {}
         let rows: AnyRecord[]
@@ -608,9 +644,9 @@ function createAdapter(client: SupabaseClient<any>) {
       async create(args: AnyRecord) {
         return insertRow(client, TABLES.appointment, args?.data ?? {})
       },
-    },
+    }, 'appointment'),
 
-    carePlanItem: {
+    carePlanItem: makeDelegate({
       async findMany(args: AnyRecord = {}) {
         const where = args.where ?? {}
         let rows: AnyRecord[]
@@ -651,9 +687,9 @@ function createAdapter(client: SupabaseClient<any>) {
         if (!args?.where?.id) throw new Error('CarePlanItem.update requires where.id')
         return updateByEq(client, TABLES.carePlanItem, 'id', args.where.id, args?.data ?? {})
       },
-    },
+    }, 'carePlanItem'),
 
-    generatedReport: {
+    generatedReport: makeDelegate({
       async findMany(args: AnyRecord = {}) {
         const where = args.where ?? {}
         let rows = where.visitId
@@ -666,7 +702,7 @@ function createAdapter(client: SupabaseClient<any>) {
       async create(args: AnyRecord) {
         return insertRow(client, TABLES.generatedReport, args?.data ?? {})
       },
-    },
+    }, 'generatedReport'),
   }
 
   return adapter
@@ -681,7 +717,7 @@ export function createPrismaClient() {
 }
 
 const globalForAdapter = globalThis as typeof globalThis & {
-  __synthDbAdapter?: ReturnType<typeof createPrismaClient>
+  __synthDbAdapter?: DbAdapter
 }
 
 export const prisma =

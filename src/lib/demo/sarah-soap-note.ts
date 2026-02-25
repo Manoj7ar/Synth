@@ -119,7 +119,7 @@ export async function ensureSarahDemoSoapNoteForClinician(
   const startedAt = new Date(Date.now() - 1000 * 60 * 60 * 26)
   const finalizedAt = new Date(Date.now() - 1000 * 60 * 60 * 24)
 
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: any) => {
     const patient = await tx.patient.create({
       data: {
         displayName: SARAH_DEMO_PATIENT_NAME,
