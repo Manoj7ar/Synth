@@ -7,7 +7,7 @@
 <p align="center"><strong>AI-powered clinical visit workflow platform built on Next.js, Prisma, Gemini, and an Elasticsearch/Kibana clinical intelligence layer.</strong></p>
 
 <p align="center">
-  <code>Next.js 16</code> · <code>React 19</code> · <code>TypeScript</code> · <code>Prisma + SQLite</code> · <code>Gemini</code> · <code>Elasticsearch</code> · <code>Kibana Agent Builder</code>
+  <code>Next.js 16</code> | <code>React 19</code> | <code>TypeScript</code> | <code>Prisma + SQLite</code> | <code>Gemini</code> | <code>Elasticsearch</code> | <code>Kibana Agent Builder</code>
 </p>
 
 ---
@@ -35,7 +35,7 @@ Synth is designed so the application still works without Elasticsearch/Kibana (f
 ```mermaid
 flowchart TB
   subgraph Browser[Browser / UI]
-    LP[Landing Page\nSOAP Preview Demo]
+    LP["Landing Page<br/>SOAP Preview Demo"]
     CL[Clinician Dashboard]
     TR[Transcribe Workspace]
     SN[SOAP Notes Workspace]
@@ -43,23 +43,23 @@ flowchart TB
   end
 
   subgraph NextApp[Next.js App Router + API Routes]
-    API1[/api/transcribe]
-    API2[/api/transcribe/save]
-    API3[/api/finalize-visit]
-    API4[/api/chat]
-    API5[/api/assistant]
-    API6[/api/analytics]
-    API7[/api/landing/soap-preview]
+    API1["/api/transcribe"]
+    API2["/api/transcribe/save"]
+    API3["/api/finalize-visit"]
+    API4["/api/chat"]
+    API5["/api/assistant"]
+    API6["/api/analytics"]
+    API7["/api/landing/soap-preview"]
     AUTH[NextAuth Credentials]
   end
 
   subgraph Data[Primary App Data]
     PRISMA[Prisma Client]
-    SQLITE[(SQLite\nDATABASE_URL)]
+    SQLITE["SQLite<br/>DATABASE_URL"]
   end
 
   subgraph AI[AI Services]
-    GEM[Google Gemini\nTranscription + Generation]
+    GEM["Google Gemini<br/>Transcription + Generation"]
   end
 
   subgraph Elastic[Elastic Stack - Optional/Integrated]
@@ -636,3 +636,4 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
