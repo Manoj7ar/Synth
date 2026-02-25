@@ -488,14 +488,14 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
 
   if (isRecordingFocus) {
     return (
-      <div className="space-y-4">
-        <div className="sticky top-0 z-10 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_10px_24px_rgba(36,57,109,0.12)] backdrop-blur-md">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-6">
+        <div className="sticky top-0 z-10 rounded-3xl border border-[#eadfcd] bg-white/85 px-4 py-4 shadow-[0_12px_30px_rgba(84,63,31,0.12)] backdrop-blur-xl md:px-6 md:py-5">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               type="button"
               onClick={handleStart}
               disabled={recordingState === 'recording'}
-              className="bg-sky-500 text-white hover:bg-sky-400"
+              className="rounded-full bg-cyan-300 px-4 text-slate-950 hover:bg-cyan-200"
             >
               <Mic size={16} className="mr-2" />
               {recordingState === 'paused' ? 'Resume' : 'Recording'}
@@ -505,7 +505,7 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
               onClick={handlePause}
               disabled={recordingState !== 'recording'}
               variant="ghost"
-              className="bg-white/70 text-slate-700 hover:bg-white"
+              className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
               <Pause size={16} className="mr-2" />
               Pause
@@ -515,13 +515,13 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
               onClick={handleStop}
               disabled={recordingState !== 'recording' && recordingState !== 'paused'}
               variant="ghost"
-              className="bg-white/70 text-slate-700 hover:bg-white"
+              className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
             >
               <Square size={16} className="mr-2" />
               Stop
             </Button>
 
-            <div className="ml-auto flex items-center gap-2 rounded-xl border border-[#e8dcc8] bg-white/70 px-3 py-2 text-sm font-medium text-slate-700">
+            <div className="ml-auto flex items-center gap-2 rounded-2xl border border-[#eadfcd] bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700">
               <span
                 className={`inline-block h-2.5 w-2.5 rounded-full ${
                   recordingState === 'recording' ? 'bg-red-500' : 'bg-amber-500'
@@ -532,118 +532,174 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
           </div>
         </div>
 
-        <div className="min-h-[62vh] rounded-2xl border border-white/70 bg-white/70 p-5 shadow-[0_14px_36px_rgba(36,57,109,0.12)] backdrop-blur-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Live Transcript
-          </p>
-          <div className="mt-3 max-h-[58vh] overflow-y-auto pr-1">
-            {liveTranscript || interimTranscript ? (
-              <p className="text-[15px] leading-7 text-slate-800">
-                {liveTranscript}
-                {interimTranscript && (
-                  <span className="italic text-slate-500">{`${interimTranscript} `}</span>
-                )}
-              </p>
-            ) : (
-              <p className="text-sm text-slate-500">Listening... speak to see live transcript here.</p>
-            )}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+          <div className="min-h-[62vh] rounded-3xl border border-[#eadfcd] bg-white/80 p-6 shadow-[0_14px_40px_rgba(84,63,31,0.12)] backdrop-blur-xl md:p-7">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Live Transcript
+                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Speak naturally. Interim text will appear in italics until finalized.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-medium text-cyan-800">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                {recordingState === 'recording' ? 'Recording' : 'Paused'}
+              </span>
+            </div>
+
+            <div className="mt-6 max-h-[56vh] overflow-y-auto rounded-2xl border border-[#eadfcd] bg-white/70 p-5 pr-4">
+              {liveTranscript || interimTranscript ? (
+                <p className="text-[15px] leading-7 text-slate-800">
+                  {liveTranscript}
+                  {interimTranscript && (
+                    <span className="italic text-slate-500">{`${interimTranscript} `}</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Listening... speak to see live transcript here.
+                </p>
+              )}
+            </div>
           </div>
 
-          {liveEntities.length > 0 && (
-            <div className="mt-4 border-t border-slate-200/70 pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Live ML Signals
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-[#eadfcd] bg-white/80 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.10)] backdrop-blur-xl md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Session Status
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {liveEntities.map((entity) => (
-                  <span
-                    key={`${entity.kind}-${entity.name}`}
-                    className="inline-flex items-center rounded-full bg-[#f1e4cc] px-2.5 py-1 text-xs font-medium text-[#59431f]"
-                  >
-                    <span className="mr-1">{entity.emoji}</span>
-                    {entity.name}
-                  </span>
-                ))}
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-2xl border border-[#eadfcd] bg-white/75 px-4 py-3.5">
+                  <p className="text-xs text-slate-500">Elapsed time</p>
+                  <p className="mt-1.5 text-lg font-semibold tracking-tight text-slate-900">
+                    {formatElapsed(elapsedSeconds)}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[#eadfcd] bg-white/75 px-4 py-3.5">
+                  <p className="text-xs text-slate-500">State</p>
+                  <p className="mt-1.5 text-sm leading-6 font-medium text-slate-800">
+                    {recordingState === 'recording' ? 'Actively recording' : 'Paused'}
+                  </p>
+                </div>
               </div>
             </div>
-          )}
+
+            <div className="rounded-3xl border border-[#eadfcd] bg-white/80 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.10)] backdrop-blur-xl md:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Live ML Signals
+              </p>
+              {liveEntities.length > 0 ? (
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  {liveEntities.map((entity) => (
+                    <span
+                      key={`${entity.kind}-${entity.name}`}
+                      className="inline-flex items-center rounded-full bg-[#f1e4cc] px-2.5 py-1 text-xs font-medium text-[#59431f]"
+                    >
+                      <span className="mr-1">{entity.emoji}</span>
+                      {entity.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-7 text-slate-500">
+                  Signals appear when symptoms, medications, or vitals are detected in the live
+                  transcript.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div className="border-b border-[#e8dcc8] pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            onClick={handleStart}
-            disabled={recordingState === 'processing'}
-            className="bg-sky-500 text-white hover:bg-sky-400"
-          >
-            <Mic size={16} className="mr-2" />
-            {recordingState === 'paused' ? 'Resume' : 'Start'}
-          </Button>
-          <Button
-            type="button"
-            onClick={handlePause}
-            disabled={recordingState !== 'recording'}
-            variant="ghost"
-            className="bg-white/70 text-slate-700 hover:bg-white"
-          >
-            <Pause size={16} className="mr-2" />
-            Pause
-          </Button>
-          <Button
-            type="button"
-            onClick={handleStop}
-            disabled={recordingState !== 'recording' && recordingState !== 'paused'}
-            variant="ghost"
-            className="bg-white/70 text-slate-700 hover:bg-white"
-          >
-            <Square size={16} className="mr-2" />
-            Stop
-          </Button>
+    <div className="space-y-7">
+      <div className="rounded-3xl border border-[#eadfcd] bg-white/70 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.08)] md:p-6">
+        <div className="flex flex-col gap-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Recorder Controls
+            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Start recording to capture a visit, then stop to run AI transcription.
+            </p>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2 rounded-xl border border-[#e8dcc8] bg-white/45 px-3 py-2 text-sm font-medium text-slate-700">
-            {recordingState === 'processing' ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <span
-                  className={`inline-block h-2.5 w-2.5 rounded-full ${
-                    recordingState === 'recording' ? 'bg-red-500' : 'bg-slate-400'
-                  }`}
-                />
-                {formatElapsed(elapsedSeconds)}
-              </>
-            )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={handleStart}
+              disabled={recordingState === 'processing'}
+              className="rounded-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+            >
+              <Mic size={16} className="mr-2" />
+              {recordingState === 'paused' ? 'Resume' : 'Start'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePause}
+              disabled={recordingState !== 'recording'}
+              variant="ghost"
+              className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
+            >
+              <Pause size={16} className="mr-2" />
+              Pause
+            </Button>
+            <Button
+              type="button"
+              onClick={handleStop}
+              disabled={recordingState !== 'recording' && recordingState !== 'paused'}
+              variant="ghost"
+              className="rounded-full border border-[#eadfcd] bg-white/80 text-slate-700 hover:bg-white"
+            >
+              <Square size={16} className="mr-2" />
+              Stop
+            </Button>
+
+            <div className="ml-auto flex items-center gap-2 rounded-2xl border border-[#eadfcd] bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700">
+              {recordingState === 'processing' ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <span
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      recordingState === 'recording' ? 'bg-red-500' : 'bg-slate-400'
+                    }`}
+                  />
+                  {formatElapsed(elapsedSeconds)}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {(liveTranscript || interimTranscript) && (
-        <div className="border-b border-[#e8dcc8] pb-5">
+        <div className="rounded-3xl border border-[#eadfcd] bg-white/70 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.08)] md:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             Live Transcript
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            {liveTranscript}
-            {interimTranscript && (
-              <span className="italic text-slate-500">{`${interimTranscript} `}</span>
-            )}
-          </p>
+          <div className="mt-5 rounded-2xl border border-[#eadfcd] bg-white/75 p-5">
+            <p className="text-sm leading-7 text-slate-700">
+              {liveTranscript}
+              {interimTranscript && (
+                <span className="italic text-slate-500">{`${interimTranscript} `}</span>
+              )}
+            </p>
+          </div>
 
           {liveEntities.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Live ML Signals
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3.5 flex flex-wrap gap-2.5">
                 {liveEntities.map((entity) => (
                   <span
                     key={`${entity.kind}-${entity.name}`}
@@ -660,36 +716,39 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
       )}
 
       {errorMessage && (
-        <div className="border border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-700">
           {errorMessage}
         </div>
       )}
 
-      <div className="border-b border-[#e8dcc8] pb-5">
+      <div className="rounded-3xl border border-[#eadfcd] bg-white/70 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.08)] md:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           Save Transcription
         </p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Save the parsed transcript to generate the patient summary and SOAP notes.
+        </p>
 
-        <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="mt-5 flex flex-col gap-3.5 md:flex-row md:items-center">
           <input
             value={patientName}
             onChange={(e) => setPatientName(e.target.value)}
             placeholder="Patient name"
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 md:flex-1"
+            className="h-11 w-full rounded-xl border border-[#eadfcd] bg-white px-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-500 md:flex-1"
           />
           <Button
             type="button"
             onClick={handleSaveTranscription}
             disabled={segments.length === 0 || isSaving}
-            className="bg-sky-500 text-white hover:bg-sky-400"
+            className="rounded-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"
           >
             {isSaving ? 'Saving...' : 'Save transcription'}
           </Button>
         </div>
 
-        {saveError && <p className="mt-3 text-sm text-red-700">{saveError}</p>}
+        {saveError && <p className="mt-4 text-sm text-red-700">{saveError}</p>}
         {savedVisitId && (
-          <div className="mt-3 text-sm text-emerald-700">
+          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3.5 text-sm leading-6 text-emerald-800">
             Saved successfully.{' '}
             <Link href={`/soap-notes/${savedVisitId}`} className="font-semibold underline">
               Open this patient in SOAP Notes
@@ -699,34 +758,34 @@ export function TranscribeRecorder({ onRecordingFocusChange }: TranscribeRecorde
         )}
       </div>
 
-      <div>
+      <div className="rounded-3xl border border-[#eadfcd] bg-white/70 p-5 shadow-[0_12px_30px_rgba(84,63,31,0.08)] md:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
           Transcript
         </p>
 
         {segments.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-600">
+          <div className="mt-5 rounded-2xl border border-dashed border-[#e2d3bd] bg-white/60 p-5 text-sm leading-6 text-slate-600">
             Record and stop to generate transcript. Speaker labels will appear as Doctor and
             Patient.
-          </p>
+          </div>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className="mt-5 max-h-[34rem] space-y-4 overflow-y-auto pr-1">
             {segments.map((segment, index) => (
               <div
                 key={`${segment.start_ms}-${index}`}
-                className={`border-l-4 py-2 pl-3 pr-2 ${
+                className={`rounded-2xl border px-4 py-4 md:px-5 ${
                   segment.speaker === 'clinician'
-                    ? 'border-sky-300 bg-sky-50/55'
-                    : 'border-emerald-300 bg-emerald-50/55'
+                    ? 'border-sky-200 bg-sky-50/70'
+                    : 'border-emerald-200 bg-emerald-50/70'
                 }`}
               >
-                <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                <div className="mb-2 flex flex-wrap items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
                   <span>{speakerLabel(segment.speaker)}</span>
-                  <span className="text-slate-400">
+                  <span className="text-slate-400 normal-case tracking-normal">
                     {formatTimestamp(segment.start_ms)} - {formatTimestamp(segment.end_ms)}
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-slate-800">{segment.text}</p>
+                <p className="text-sm leading-7 text-slate-800">{segment.text}</p>
               </div>
             ))}
           </div>
