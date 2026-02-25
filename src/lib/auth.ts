@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
+import { ensureSarahDemoSoapNoteForClinician } from '@/lib/demo/sarah-soap-note'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -27,13 +28,15 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Demo auth mode: accept any credentials and auto-provision clinician users.
-        // Passwords are stored only so Prisma/NextAuth data remains structurally valid.
         let user = await prisma.user.findUnique({
           where: { email },
         })
 
-        if (!user) {
+        if (intent === 'signup') {
+          if (user) {
+            return null
+          }
+
           const passwordHash = await bcrypt.hash(password, 10)
           user = await prisma.user.create({
             data: {
@@ -43,13 +46,21 @@ export const authOptions: NextAuthOptions = {
               name: providedName || null,
             },
           })
-        } else if (intent === 'signup' && providedName && user.name !== providedName) {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              name: providedName,
-            },
-          })
+
+          try {
+            await ensureSarahDemoSoapNoteForClinician(prisma, user.id)
+          } catch (error) {
+            console.warn('Unable to create Sarah demo SOAP note for new clinician:', error)
+          }
+        } else {
+          if (!user) {
+            return null
+          }
+
+          const isValidPassword = await bcrypt.compare(password, user.passwordHash)
+          if (!isValidPassword) {
+            return null
+          }
         }
 
         return {
@@ -79,7 +90,6 @@ export const authOptions: NextAuthOptions = {
         if (token.role) {
           session.user.role = token.role
         }
-
         if (token.sub) {
           try {
             const dbUser = await prisma.user.findUnique({
@@ -109,7 +119,6 @@ export const authOptions: NextAuthOptions = {
               session.user.onboardingComplete = false
             }
           } catch (error) {
-            // Compatibility fallback if a local/demo SQLite file hasn't applied the profile columns yet.
             console.warn('Session profile hydration fallback:', error)
             const legacyUser = await prisma.user.findUnique({
               where: { id: token.sub },
@@ -128,7 +137,6 @@ export const authOptions: NextAuthOptions = {
             session.user.practiceName = null
             session.user.specialty = null
             session.user.onboardingCompletedAt = null
-            // Avoid login redirect loops when schema is behind; onboarding fields can be added after migration.
             session.user.onboardingComplete = true
           }
         }

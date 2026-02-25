@@ -5,7 +5,7 @@ import { LogOut, Plus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { SoapNotesFloatingHeader } from '@/components/soap-notes/SoapNotesFloatingHeader'
 import { requireClinicianPage } from '@/lib/server/clinician-auth'
-import { ensureSarahDemoSoapNoteForClinician, SARAH_TESTER_EMAIL } from '@/lib/demo/sarah-soap-note'
+import { ensureSarahDemoSoapNoteForClinician } from '@/lib/demo/sarah-soap-note'
 
 function profileSubtitle(practiceName: string | null, specialty: string | null) {
   const parts = [specialty, practiceName].filter(Boolean)
@@ -15,12 +15,10 @@ function profileSubtitle(practiceName: string | null, specialty: string | null) 
 export default async function SoapNotesPage() {
   const { user } = await requireClinicianPage()
 
-  if (user.email === SARAH_TESTER_EMAIL) {
-    try {
-      await ensureSarahDemoSoapNoteForClinician(prisma, user.id)
-    } catch (error) {
-      console.warn('Unable to ensure Sarah demo SOAP note:', error)
-    }
+  try {
+    await ensureSarahDemoSoapNoteForClinician(prisma, user.id)
+  } catch (error) {
+    console.warn('Unable to ensure Sarah demo SOAP note:', error)
   }
 
   const records = await prisma.visitDocumentation.findMany({
