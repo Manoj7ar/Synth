@@ -4,7 +4,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-function getPrismaDatabaseUrl() {
+export function getPrismaDatabaseUrl() {
   const raw = process.env.DATABASE_URL
   if (!raw) {
     return undefined
@@ -34,9 +34,8 @@ function getPrismaDatabaseUrl() {
 
 const prismaDatabaseUrl = getPrismaDatabaseUrl()
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient(
+export function createPrismaClient() {
+  return new PrismaClient(
     prismaDatabaseUrl
       ? {
           datasources: {
@@ -47,5 +46,10 @@ export const prisma =
         }
       : undefined
   )
+}
+
+export const prisma =
+  globalForPrisma.prisma ??
+  createPrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
