@@ -50,8 +50,8 @@ flowchart TB
   end
 
   subgraph Data[Primary App Data]
-    PRISMA[Prisma Client]
-    SQLITE["SQLite<br/>DATABASE_URL"]
+    DBADAPTER["Supabase Adapter<br/>src/lib/prisma.ts"]
+    SUPADB["Supabase Postgres"]
   end
 
   subgraph AI[AI Services]
@@ -78,12 +78,12 @@ flowchart TB
   API5 --> GEM
   API7 --> GEM
 
-  API2 --> PRISMA
-  API3 --> PRISMA
-  API4 --> PRISMA
-  API5 --> PRISMA
-  API6 --> PRISMA
-  PRISMA --> SQLITE
+  API2 --> DBADAPTER
+  API3 --> DBADAPTER
+  API4 --> DBADAPTER
+  API5 --> DBADAPTER
+  API6 --> DBADAPTER
+  DBADAPTER --> SUPADB
 
   API3 --> ES
   API4 --> ES
@@ -99,7 +99,7 @@ sequenceDiagram
   participant T as /api/transcribe
   participant G as Gemini
   participant S as /api/transcribe/save
-  participant DB as Prisma + SQLite
+  participant DB as Supabase Postgres (via src/lib/prisma.ts adapter)
   participant N as /soap-notes/[visitId]
 
   U->>T: POST audio (FormData)
@@ -127,7 +127,7 @@ sequenceDiagram
 sequenceDiagram
   participant UI as Chat UI
   participant API as /api/chat
-  participant DB as Prisma
+  participant DB as Supabase adapter (src/lib/prisma.ts)
   participant KB as Kibana Agent Builder
   participant ES as Elasticsearch
   participant G as Gemini
@@ -156,15 +156,19 @@ sequenceDiagram
 | Integration | Status in Code | Purpose | Key Files |
 |---|---|---|---|
 | NextAuth (Credentials) | Required | clinician auth/session | `src/lib/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts` |
-| Prisma + SQLite | Required | core app persistence | `prisma/schema.prisma`, `src/lib/prisma.ts` |
+| Supabase Postgres + Supabase adapter | Required | core app persistence (runtime uses `src/lib/prisma.ts` compatibility adapter) | `src/lib/prisma.ts`, `src/lib/supabase-admin.ts` |
+| Prisma schema tooling | Build/ops support | schema generation / db push / seed workflow | `prisma/schema.prisma`, `prisma/seed.ts` |
 | Google Gemini | Required for AI features | audio transcription + summaries + SOAP + assistant fallback | `src/lib/gemini.ts`, `src/app/api/transcribe/route.ts`, `src/lib/clinical-notes.ts` |
 | Elasticsearch | Optional but deeply integrated | transcript retrieval, visit artifacts, analytics, audit log | `src/lib/elasticsearch/*`, `src/app/api/finalize-visit/route.ts`, `src/app/api/analytics/route.ts`, `src/app/api/chat/route.ts` |
 | Kibana Agent Builder | Optional | clinician agent orchestration and tools | `src/lib/kibana/*`, `scripts/bootstrap.ts`, `src/app/api/chat/route.ts` |
 
-### Non-Backend Supabase Usage
+### Supabase Backend Usage (Current)
 
-Supabase appears in this repo as **public image asset hosting URLs** used by landing/login/marketing visuals.
-It is **not** the primary database/auth/backend in the current implementation.
+Supabase is now the **primary transactional backend** for Synth (Postgres + service-role access from server routes).
+
+- Runtime DB access goes through the compatibility module `src/lib/prisma.ts` (now backed by Supabase, despite the filename).
+- Server-side Supabase client setup lives in `src/lib/supabase-admin.ts`.
+- Supabase image asset URLs are still used in some marketing/login visuals.
 
 ---
 
@@ -220,7 +224,7 @@ This supports exact visit replay, keyword search, and entity-level lookup.
 
 `src/app/api/finalize-visit/route.ts`:
 
-- loads transcript chunks (ES first, Prisma fallback)
+- loads transcript chunks (ES first, transactional DB fallback)
 - aggregates symptoms/procedures/vitals/meds
 - generates final artifacts (after-visit summary, SOAP draft, follow-ups)
 - writes to `synth_visit_artifacts`
@@ -254,7 +258,7 @@ These tools are bound to agents created in `src/lib/kibana/agents.ts`.
 
 The app remains usable when Elastic is unavailable:
 
-- `/api/finalize-visit` can fall back to Prisma-stored transcript JSON + local entity extraction
+- `/api/finalize-visit` can fall back to transactional `VisitDocumentation.transcriptJson` + local entity extraction
 - `/api/analytics` returns safe empty payloads on failure
 - `/api/chat` falls back to Gemini-grounded responses when Kibana/Elastic agent path is unavailable
 
@@ -262,9 +266,11 @@ This is intentional and useful for local demos, partial deployments, and degrade
 
 ---
 
-## Data Model (Prisma / SQLite)
+## Data Model (Supabase Postgres)
 
-`prisma/schema.prisma` uses SQLite in the current implementation.
+The app runtime persists transactional data in **Supabase Postgres**.
+
+`prisma/schema.prisma` is still used as a schema/seed tooling definition, but runtime CRUD now goes through the Supabase-backed compatibility adapter in `src/lib/prisma.ts`.
 
 ### ER Diagram (Simplified)
 
@@ -370,7 +376,7 @@ If Gemini or Kibana path fails:
 - transcript review
 - entity chips
 - finalize visit action (`/api/finalize-visit`)
-- ES-first, Prisma fallback transcript load
+- ES-first, transactional DB fallback transcript load
 
 ### SOAP Notes (`/soap-notes`, `/soap-notes/[visitId]`)
 
@@ -422,8 +428,8 @@ If Gemini or Kibana path fails:
 
 ```text
 prisma/
-  schema.prisma                # SQLite schema (users, visits, docs, share links, tasks, reports)
-  seed.ts                      # seeds clinician login only (no demo visits/notes)
+  schema.prisma                # Postgres schema definition used for db push / client generation
+  seed.ts                      # seeds clinician + Sarah demo SOAP note via adapter
 
 scripts/
   bootstrap.ts                 # Elastic + Kibana bootstrap (indices, pipeline, tools, agents)
@@ -448,7 +454,8 @@ src/
     clinical-notes.ts          # summary/SOAP generation (+ fallback generators)
     gemini.ts                  # Gemini client initialization
     auth.ts                    # NextAuth credentials config
-    prisma.ts                  # Prisma client singleton
+    prisma.ts                  # Supabase-backed DB compatibility adapter (legacy filename)
+    supabase-admin.ts          # server-side Supabase admin client
     elasticsearch/
       client.ts                # ES client setup
       indices.ts               # index mappings + create flow
@@ -487,9 +494,21 @@ copy .env.example .env
 Populate `.env`:
 
 ```env
-DATABASE_URL="file:./dev.db"
+# Supabase Postgres (Prisma schema tooling + some scripts)
+DATABASE_URL="postgresql://...pooler.supabase.com:5432/postgres?sslmode=require"
+DIRECT_URL="postgresql://...pooler.supabase.com:5432/postgres?sslmode=require"
+
+# Supabase runtime clients
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=...
+
+# App auth / URLs
 NEXTAUTH_SECRET=...
 NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# AI
 GEMINI_API_KEY=...
 
 # Optional / Elastic features
@@ -498,15 +517,13 @@ ELASTICSEARCH_API_KEY=...
 KIBANA_URL=...
 KIBANA_API_KEY=...
 KIBANA_SPACE_ID=default
-
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 3) Initialize Prisma
+### 3) Initialize the Supabase DB schema (via Prisma schema tooling)
 
 ```bash
 npm run prisma:generate
-npm run prisma:migrate
+npx prisma db push
 npm run prisma:seed
 ```
 
@@ -534,15 +551,15 @@ Open: `http://localhost:3000`
 
 ---
 
-## Default Seed Credentials (No Demo Visit Data)
+## Default Seed Credentials (Includes Sarah Demo Record)
 
-The seed creates **only a clinician user**, not demo patients/visits.
+The seed creates a clinician user **and** ensures the Sarah demo SOAP-note walkthrough data exists.
 
 - Email: `admin@synth.health`
 - Password: `synth2025`
 - Role: `clinician`
 
-This means you can verify empty-state behavior and create visits from scratch.
+New users created via signup also get the Sarah demo SOAP note automatically.
 
 ---
 

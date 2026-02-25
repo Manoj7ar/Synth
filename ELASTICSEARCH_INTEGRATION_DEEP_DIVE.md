@@ -23,7 +23,7 @@ Synth uses Elasticsearch as a clinical intelligence layer, not just a search box
 
 What that means in practice:
 
-- Prisma + SQLite remain the primary transactional system for users, visits, documentation, and share links.
+- Supabase Postgres (via the compatibility layer in `src/lib/prisma.ts`) is the primary transactional system for users, visits, documentation, and share links.
 - Elasticsearch stores retrieval-optimized transcript chunks and derived artifacts (summaries, SOAP drafts, follow-ups, audit logs).
 - Kibana Agent Builder (optional) sits on top of Elasticsearch to execute ES|QL tools for agent workflows.
 - The app has fallback paths so core workflows remain usable if Elastic/Kibana are unavailable.
@@ -77,8 +77,8 @@ flowchart TB
   end
 
   subgraph PRIMARY["Primary App Persistence"]
-    PR["Prisma Client"]
-    DB["SQLite (DATABASE_URL)"]
+    PR["Supabase Adapter (src/lib/prisma.ts)"]
+    DB["Supabase Postgres"]
   end
 
   subgraph AI["AI Layer"]
@@ -122,7 +122,7 @@ Synth is **not** Elasticsearch-only.
 
 It is a layered design:
 
-- Transactional correctness -> Prisma/SQLite
+- Transactional correctness -> Supabase Postgres (accessed via the `src/lib/prisma.ts` compatibility layer)
 - AI generation/transcription -> Gemini
 - Retrieval/analytics/agent tooling -> Elasticsearch (+ Kibana Agent Builder)
 
@@ -156,9 +156,9 @@ Elasticsearch gives Synth a useful combination:
 - fast document retrieval patterns
 - a natural integration path with Kibana and Agent Builder
 
-### Why not only Prisma/SQLite?
+### Why not only the transactional SQL database?
 
-SQLite is excellent for local transactional persistence, but for this app's search/analytics/agent goals it is not ideal as the only engine.
+Even with Supabase Postgres as the transactional store, forcing all search/analytics/agent retrieval into SQL alone is still a poor fit for this app's goals.
 
 Pain points if we forced everything into SQLite/Postgres-style transactional querying:
 
@@ -351,7 +351,7 @@ sequenceDiagram
   participant UI as Visit UI
   participant API as /api/finalize-visit
   participant ESQ as ES search utils
-  participant PR as Prisma
+  participant PR as Supabase adapter (src/lib/prisma.ts)
   participant ES as Elasticsearch
 
   UI->>API: POST { visitId }
@@ -381,7 +381,7 @@ sequenceDiagram
 This route demonstrates the architectural value clearly:
 
 - Elastic is used for retrieval and artifact persistence
-- Prisma remains the source of visit status and sharing/access state
+- The Supabase-backed transactional layer remains the source of visit status and sharing/access state
 - there is fallback logic, so the app does not become unusable when Elastic is absent
 
 That balance is a good engineering result.
@@ -438,7 +438,7 @@ There are two runtime paths:
 ```mermaid
 flowchart TB
   IN["/api/chat request"] --> AUTH["Resolve access (clinician or share token)"]
-  AUTH --> CTX["Load visit context from Prisma"]
+  AUTH --> CTX["Load visit context from transactional DB adapter"]
   CTX --> DEC{"Clinician + Kibana configured?"}
 
   DEC -->|Yes| KB["Kibana Agent Builder converse endpoint"]
@@ -572,7 +572,7 @@ This is especially valuable for debugging and reviewing clinical workflow automa
 
 The app can continue functioning in reduced mode if Elastic is unavailable:
 
-- finalization can rebuild from Prisma transcript JSON
+- finalization can rebuild from the transactional `VisitDocumentation.transcriptJson` record
 - analytics returns safe empty payloads
 - chat can use Gemini fallback
 
@@ -719,7 +719,7 @@ Elasticsearch is a good fit for Synth's retrieval + analytics + agent-tooling re
 The strongest design choice in this repo is not just \"using Elasticsearch\". It is the combination of:
 
 - meaningful Elastic integration where it helps
-- Prisma as a stable transactional core
+- Supabase Postgres (through the `src/lib/prisma.ts` compatibility layer) as a stable transactional core
 - explicit fallback behavior when Elastic/Kibana are absent
 
 That gives the project both:
@@ -745,4 +745,3 @@ The main downside is added operational and schema complexity, which is real and 
 - `src/app/api/finalize-visit/route.ts`
 - `src/app/api/analytics/route.ts`
 - `src/app/api/chat/route.ts`
-
