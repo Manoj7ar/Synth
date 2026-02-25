@@ -31,6 +31,15 @@ export default function LoginPage() {
   const [signupConfirm, setSignupConfirm] = useState('')
   const [signUpError, setSignUpError] = useState('')
 
+  async function parseErrorMessage(res: Response, fallback: string) {
+    try {
+      const data = (await res.json()) as { error?: unknown }
+      return typeof data.error === 'string' && data.error.trim() ? data.error : fallback
+    } catch {
+      return fallback
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -55,35 +64,61 @@ export default function LoginPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setSignUpError('')
+    setSignInError('')
+
+    const normalizedName = signupName.trim()
+    const normalizedEmail = signupEmail.trim().toLowerCase()
 
     if (signupPassword !== signupConfirm) {
       setSignUpError('Passwords do not match')
       return
     }
 
-    if (!signupName || !signupEmail || !signupPassword) {
+    if (!normalizedName || !normalizedEmail || !signupPassword) {
       setSignUpError('Please complete all fields')
       return
     }
 
     setLoading(true)
+    try {
+      const signupResponse = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: normalizedName,
+          email: normalizedEmail,
+          password: signupPassword,
+        }),
+      })
 
-    const result = await signIn('credentials', {
-      email: signupEmail,
-      password: signupPassword,
-      name: signupName,
-      intent: 'signup',
-      redirect: false,
-    })
+      if (!signupResponse.ok) {
+        setSignUpError(
+          await parseErrorMessage(signupResponse, 'Unable to create account right now')
+        )
+        setLoading(false)
+        return
+      }
 
-    if (result?.error) {
+      const result = await signIn('credentials', {
+        email: normalizedEmail,
+        password: signupPassword,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setSignUpError('Account created, but sign-in failed. Please log in manually.')
+        setLoading(false)
+        return
+      }
+
+      router.push('/clinician/onboarding')
+      router.refresh()
+    } catch {
       setSignUpError('Unable to create account right now')
       setLoading(false)
-      return
     }
-
-    router.push('/clinician/onboarding')
-    router.refresh()
   }
 
   const quickLogin = async (loginEmail: string, loginPassword: string) => {
