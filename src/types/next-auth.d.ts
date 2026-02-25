@@ -7,6 +7,10 @@ declare module 'next-auth' {
       email: string
       name?: string | null
       role: string
+      practiceName?: string | null
+      specialty?: string | null
+      onboardingCompletedAt?: string | null
+      onboardingComplete?: boolean
       image?: string | null
     }
   }

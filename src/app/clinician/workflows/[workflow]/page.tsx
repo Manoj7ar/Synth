@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { getServerSession } from 'next-auth'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import {
   ArrowLeft,
@@ -11,8 +10,8 @@ import {
   Stethoscope,
   TrendingUp,
 } from 'lucide-react'
-import { authOptions } from '@/lib/auth'
 import { FloatingSidebarNav } from '@/components/clinician/FloatingSidebarNav'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
 
 type WorkflowKey = 'morning-review' | 'medication-risk-sweep' | 'trend-watch'
 
@@ -133,11 +132,7 @@ export default async function ClinicianWorkflowPage({
 }: {
   params: Promise<{ workflow: string }>
 }) {
-  const session = await getServerSession(authOptions)
-
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
-  }
+  const { user } = await requireClinicianPage()
 
   const { workflow } = await params
 
@@ -202,6 +197,11 @@ export default async function ClinicianWorkflowPage({
                   </h1>
                   <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-base">
                     {details.description}
+                  </p>
+                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                    {user.name ?? 'Clinician'}
+                    {user.specialty ? ` · ${user.specialty}` : ''}
+                    {user.practiceName ? ` · ${user.practiceName}` : ''}
                   </p>
                 </div>
               </div>

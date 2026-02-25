@@ -1,5 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -14,6 +12,7 @@ import { SoapNoteRenderer } from '@/components/soap-notes/SoapNoteRenderer'
 import { ConversationSummaryRenderer } from '@/components/soap-notes/ConversationSummaryRenderer'
 import { SoapNotesFloatingHeader } from '@/components/soap-notes/SoapNotesFloatingHeader'
 import { PatientAgentShareButton } from '@/components/soap-notes/PatientAgentShareButton'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
 
 function generateShareToken() {
   return (
@@ -42,10 +41,7 @@ export default async function SoapNotesDetailPage({
 }: {
   params: Promise<{ visitId: string }>
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
-  }
+  const { user } = await requireClinicianPage()
 
   const { visitId } = await params
 
@@ -61,7 +57,7 @@ export default async function SoapNotesDetailPage({
     },
   })
 
-  if (!visit || visit.clinicianId !== session.user.id || !visit.documentation) {
+  if (!visit || visit.clinicianId !== user.id || !visit.documentation) {
     redirect('/soap-notes')
   }
 

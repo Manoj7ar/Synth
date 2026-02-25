@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { ensureSarahDemoSoapNoteForClinician } from '../src/lib/demo/sarah-soap-note'
 
 const prisma = new PrismaClient()
 
@@ -18,6 +19,9 @@ async function main() {
     }
   })
   console.log('Created clinician:', clinician.email)
+
+  await ensureSarahDemoSoapNoteForClinician(prisma, clinician.id)
+  console.log('Ensured Sarah demo SOAP note for clinician walkthrough')
 
   console.log('Seed complete!')
 }

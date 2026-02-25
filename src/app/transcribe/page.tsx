@@ -1,14 +1,14 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import { TranscribeWorkspace } from '@/components/transcribe/TranscribeWorkspace'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
 
 export default async function TranscribePage() {
-  const session = await getServerSession(authOptions)
+  const { user } = await requireClinicianPage()
 
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
-  }
-
-  return <TranscribeWorkspace clinicianName={session.user.name ?? 'Clinician'} />
+  return (
+    <TranscribeWorkspace
+      clinicianName={user.name ?? 'Clinician'}
+      practiceName={user.practiceName}
+      specialty={user.specialty}
+    />
+  )
 }

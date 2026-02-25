@@ -1,5 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { TranscriptEditor } from '@/components/visit/TranscriptEditor'
@@ -9,6 +7,7 @@ import type { TranscriptChunk as EditorTranscriptChunk } from '@/types'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { FinalizeButton } from './FinalizeButton'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
 
 type VisitTranscriptChunk = EditorTranscriptChunk & {
   id?: string
@@ -17,11 +16,7 @@ type VisitTranscriptChunk = EditorTranscriptChunk & {
 }
 
 export default async function VisitPage({ params }: { params: Promise<{ visitId: string }> }) {
-  const session = await getServerSession(authOptions)
-  
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
-  }
+  const { user } = await requireClinicianPage()
 
   const { visitId } = await params
 
@@ -30,7 +25,7 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
     include: { patient: true, shareLinks: true }
   })
 
-  if (!visit || visit.clinicianId !== session.user.id) {
+  if (!visit || visit.clinicianId !== user.id) {
     redirect('/clinician')
   }
 
@@ -148,6 +143,16 @@ export default async function VisitPage({ params }: { params: Promise<{ visitId:
                 <div>
                   <span className="font-medium">Patient:</span> {visit.patient.displayName}
                 </div>
+                <div>
+                  <span className="font-medium">Clinician:</span>{' '}
+                  {user.name ?? 'Clinician'}
+                  {user.specialty ? ` (${user.specialty})` : ''}
+                </div>
+                {user.practiceName && (
+                  <div>
+                    <span className="font-medium">Practice:</span> {user.practiceName}
+                  </div>
+                )}
                 <div>
                   <span className="font-medium">Date:</span> {new Date(visit.startedAt).toLocaleString()}
                 </div>

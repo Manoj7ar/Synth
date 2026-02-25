@@ -13,6 +13,9 @@ model User {
   passwordHash String
   role         String
   name         String?
+  practiceName String?
+  specialty    String?
+  onboardingCompletedAt DateTime?
   createdAt    DateTime @default(now())
   
   clinicianVisits Visit[] @relation("ClinicianVisits")

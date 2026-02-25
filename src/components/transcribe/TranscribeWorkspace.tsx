@@ -7,6 +7,7 @@ import {
   AudioLines,
   FileText,
   LogOut,
+  PencilLine,
   Plus,
   ShieldCheck,
   Sparkles,
@@ -16,13 +17,25 @@ import { TranscribeRecorder } from '@/components/transcribe/TranscribeRecorder'
 
 interface TranscribeWorkspaceProps {
   clinicianName: string
+  practiceName: string | null
+  specialty: string | null
 }
 
 const PANEL =
   'border border-[#eadfcd] bg-white/75 shadow-[0_14px_40px_rgba(84,63,31,0.12)] backdrop-blur-xl'
 
-export function TranscribeWorkspace({ clinicianName }: TranscribeWorkspaceProps) {
+function profileLine(practiceName: string | null, specialty: string | null) {
+  const parts = [specialty, practiceName].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+export function TranscribeWorkspace({
+  clinicianName,
+  practiceName,
+  specialty,
+}: TranscribeWorkspaceProps) {
   const [isRecordingFocus, setIsRecordingFocus] = useState(false)
+  const clinicianProfileLine = profileLine(practiceName, specialty)
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#f6efe2] text-slate-900">
@@ -48,6 +61,16 @@ export function TranscribeWorkspace({ clinicianName }: TranscribeWorkspaceProps)
       <FloatingSidebarNav anchor="top-left" fadeOnScroll />
 
       <div className="fixed right-4 top-4 z-20 flex items-center gap-2 md:right-6 md:top-6">
+        <Button
+          asChild
+          variant="ghost"
+          className="rounded-full border border-[#e6d9c4] bg-white/70 text-slate-700 backdrop-blur-md hover:bg-white"
+        >
+          <Link href="/clinician/onboarding?edit=1">
+            <PencilLine size={16} className="mr-2" />
+            Edit Profile
+          </Link>
+        </Button>
         <Button
           asChild
           className="rounded-full bg-[#0ea5e9] text-white shadow-[0_10px_24px_rgba(14,165,233,0.24)] hover:bg-[#38bdf8]"
@@ -85,6 +108,9 @@ export function TranscribeWorkspace({ clinicianName }: TranscribeWorkspaceProps)
                   ? 'Live recording session in progress'
                   : `Welcome back, ${clinicianName}`}
               </h1>
+              {!isRecordingFocus && clinicianProfileLine ? (
+                <p className="mt-2 text-sm font-medium text-slate-500">{clinicianProfileLine}</p>
+              ) : null}
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base md:leading-7">
                 {isRecordingFocus
                   ? 'Capture the visit, monitor the live transcript, then save a structured record for SOAP generation.'

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getClinicianSessionContext } from '@/lib/server/clinician-auth'
 
 type ReportRecord = {
   id: string
@@ -29,12 +28,16 @@ async function getAuthorizedVisit(visitId: string, clinicianId: string) {
 function fallbackReport({
   patientName,
   clinicianName,
+  clinicianPracticeName,
+  clinicianSpecialty,
   summary,
   soapNotes,
   additionalNotes,
 }: {
   patientName: string
   clinicianName: string
+  clinicianPracticeName: string
+  clinicianSpecialty: string
   summary: string
   soapNotes: string
   additionalNotes: string
@@ -44,6 +47,8 @@ function fallbackReport({
 ## Patient Information
 - Patient: ${patientName}
 - Clinician: ${clinicianName}
+- Specialty: ${clinicianSpecialty || 'Not provided'}
+- Practice: ${clinicianPracticeName || 'Not provided'}
 - Generated: ${new Date().toLocaleString()}
 
 ## Visit Summary
@@ -65,6 +70,8 @@ ${additionalNotes || 'No additional notes provided.'}
 async function generateMedicalReportContent(args: {
   patientName: string
   clinicianName: string
+  clinicianPracticeName: string
+  clinicianSpecialty: string
   summary: string
   soapNotes: string
   additionalNotes: string
@@ -86,6 +93,8 @@ Required sections:
 Context:
 Patient: ${args.patientName}
 Clinician: ${args.clinicianName}
+Specialty: ${args.clinicianSpecialty || 'Not provided'}
+Practice: ${args.clinicianPracticeName || 'Not provided'}
 
 Summary:
 ${args.summary}
@@ -113,13 +122,13 @@ export async function GET(
   { params }: { params: Promise<{ visitId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'clinician') {
+    const context = await getClinicianSessionContext()
+    if (!context) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { visitId } = await params
-    const visit = await getAuthorizedVisit(visitId, session.user.id)
+    const visit = await getAuthorizedVisit(visitId, context.user.id)
     if (!visit) {
       return NextResponse.json({ error: 'Visit not found' }, { status: 404 })
     }
@@ -149,20 +158,22 @@ export async function POST(
   { params }: { params: Promise<{ visitId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'clinician') {
+    const context = await getClinicianSessionContext()
+    if (!context) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { visitId } = await params
-    const visit = await getAuthorizedVisit(visitId, session.user.id)
+    const visit = await getAuthorizedVisit(visitId, context.user.id)
     if (!visit || !visit.documentation) {
       return NextResponse.json({ error: 'Visit documentation not found' }, { status: 404 })
     }
 
     const payload = (await req.json()) as { title?: string }
     const reportTitle = payload.title?.trim() || `Clinical Report - ${visit.patient.displayName}`
-    const clinicianName = session.user.name || 'Clinician'
+    const clinicianName = context.user.name || 'Clinician'
+    const clinicianPracticeName = context.user.practiceName ?? ''
+    const clinicianSpecialty = context.user.specialty ?? ''
     const summary = visit.documentation.summary ?? ''
     const soapNotes = visit.documentation.soapNotes ?? ''
     const additionalNotes = visit.documentation.additionalNotes ?? ''
@@ -170,6 +181,8 @@ export async function POST(
     const content = await generateMedicalReportContent({
       patientName: visit.patient.displayName,
       clinicianName,
+      clinicianPracticeName,
+      clinicianSpecialty,
       summary,
       soapNotes,
       additionalNotes,
@@ -179,7 +192,7 @@ export async function POST(
       data: {
         visitId: visit.id,
         patientId: visit.patientId,
-        clinicianId: session.user.id,
+        clinicianId: context.user.id,
         title: reportTitle,
         content,
       },

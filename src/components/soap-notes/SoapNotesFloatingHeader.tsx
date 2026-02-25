@@ -10,12 +10,14 @@ import {
 type SoapNotesFloatingHeaderProps = {
   eyebrow: string
   title: string
+  subtitle?: string | null
   fadeOnScroll?: boolean
 }
 
 export function SoapNotesFloatingHeader({
   eyebrow,
   title,
+  subtitle,
   fadeOnScroll = false,
 }: SoapNotesFloatingHeaderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -64,6 +66,7 @@ export function SoapNotesFloatingHeader({
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{eyebrow}</p>
         <p className="text-sm font-medium text-slate-700">{title}</p>
+        {subtitle ? <p className="text-xs text-slate-500">{subtitle}</p> : null}
       </div>
     </header>
   )

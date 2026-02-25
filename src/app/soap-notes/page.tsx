@@ -1,24 +1,32 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { FloatingSidebarNav } from '@/components/clinician/FloatingSidebarNav'
 import { LogOut, Plus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { SoapNotesFloatingHeader } from '@/components/soap-notes/SoapNotesFloatingHeader'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
+import { ensureSarahDemoSoapNoteForClinician, SARAH_TESTER_EMAIL } from '@/lib/demo/sarah-soap-note'
+
+function profileSubtitle(practiceName: string | null, specialty: string | null) {
+  const parts = [specialty, practiceName].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
 
 export default async function SoapNotesPage() {
-  const session = await getServerSession(authOptions)
+  const { user } = await requireClinicianPage()
 
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
+  if (user.email === SARAH_TESTER_EMAIL) {
+    try {
+      await ensureSarahDemoSoapNoteForClinician(prisma, user.id)
+    } catch (error) {
+      console.warn('Unable to ensure Sarah demo SOAP note:', error)
+    }
   }
 
   const records = await prisma.visitDocumentation.findMany({
     where: {
       visit: {
-        clinicianId: session.user.id,
+        clinicianId: user.id,
       },
     },
     include: {
@@ -73,7 +81,8 @@ export default async function SoapNotesPage() {
 
       <SoapNotesFloatingHeader
         eyebrow="Synth"
-        title={`Welcome, ${session.user.name ?? 'Clinician'}`}
+        title={`Welcome, ${user.name ?? 'Clinician'}`}
+        subtitle={profileSubtitle(user.practiceName, user.specialty)}
         fadeOnScroll
       />
 

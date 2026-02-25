@@ -1,18 +1,14 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import { ClinicianWorkspace } from '@/components/clinician/ClinicianWorkspace'
+import { requireClinicianPage } from '@/lib/server/clinician-auth'
 
 export default async function ClinicianDashboard() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session || session.user.role !== 'clinician') {
-    redirect('/login')
-  }
+  const { user } = await requireClinicianPage()
 
   return (
     <ClinicianWorkspace
-      clinicianName={session.user.name ?? 'Clinician'}
+      clinicianName={user.name ?? 'Clinician'}
+      practiceName={user.practiceName}
+      specialty={user.specialty}
     />
   )
 }

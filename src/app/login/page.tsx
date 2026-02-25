@@ -52,7 +52,7 @@ export default function LoginPage() {
     router.refresh()
   }
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setSignUpError('')
 
@@ -66,7 +66,24 @@ export default function LoginPage() {
       return
     }
 
-    setSignUpError('Sign up is not available from this page. Contact your administrator.')
+    setLoading(true)
+
+    const result = await signIn('credentials', {
+      email: signupEmail,
+      password: signupPassword,
+      name: signupName,
+      intent: 'signup',
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setSignUpError('Unable to create account right now')
+      setLoading(false)
+      return
+    }
+
+    router.push('/clinician/onboarding')
+    router.refresh()
   }
 
   const quickLogin = async (loginEmail: string, loginPassword: string) => {
@@ -214,7 +231,7 @@ export default function LoginPage() {
                   <Button
                     variant="ghost"
                     className="w-full justify-start border-0 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                    onClick={() => quickLogin('clinician@demo.com', 'demo123')}
+                    onClick={() => quickLogin('admin@synth.health', 'synth2025')}
                     disabled={loading}
                   >
                     Tester
@@ -289,11 +306,12 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <Button
+                  <Button
                   type="submit"
                   className="w-full bg-sky-400 font-semibold text-slate-900 hover:bg-sky-300"
+                  disabled={loading}
                 >
-                  Create Account
+                  {loading ? 'Creating...' : 'Create Account'}
                 </Button>
               </form>
             )}

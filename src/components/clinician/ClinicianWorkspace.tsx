@@ -16,6 +16,7 @@ import {
   Loader2,
   LogOut,
   Plus,
+  PencilLine,
   Search,
   Send,
   Sparkles,
@@ -25,6 +26,8 @@ import { FloatingSidebarNav } from '@/components/clinician/FloatingSidebarNav'
 
 interface ClinicianWorkspaceProps {
   clinicianName: string
+  practiceName: string | null
+  specialty: string | null
 }
 
 type ComposerMode = 'ask' | 'summarize' | 'triage'
@@ -112,7 +115,16 @@ function queuePriority(v: VisitRecord): QueueItem['priority'] {
   return 'Routine'
 }
 
-export function ClinicianWorkspace({ clinicianName }: ClinicianWorkspaceProps) {
+function profileLine(practiceName: string | null, specialty: string | null) {
+  const parts = [specialty, practiceName].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+export function ClinicianWorkspace({
+  clinicianName,
+  practiceName,
+  specialty,
+}: ClinicianWorkspaceProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mode, setMode] = useState<ComposerMode>('ask')
@@ -199,6 +211,7 @@ export function ClinicianWorkspace({ clinicianName }: ClinicianWorkspaceProps) {
   }, [visits])
 
   const modeConfig = COMPOSER_MODES[mode]
+  const clinicianProfileLine = profileLine(practiceName, specialty)
 
   const handleAsk = async (e: FormEvent) => {
     e.preventDefault()
@@ -236,10 +249,14 @@ export function ClinicianWorkspace({ clinicianName }: ClinicianWorkspaceProps) {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Synth / Clinician</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-4xl">Welcome back, {clinicianName}</h1>
+              {clinicianProfileLine ? (
+                <p className="mt-2 text-sm font-medium text-slate-500">{clinicianProfileLine}</p>
+              ) : null}
               <p className="mt-3 max-w-2xl text-sm text-slate-600 md:text-base">Live visit board and working assistant tools for your shift.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <div className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-3 py-2 text-sm text-cyan-800"><Clock3 size={15} />Shift board active</div>
+              <Button asChild variant="ghost" className="rounded-full border border-[#e6d9c4] bg-white/70 text-slate-700 hover:bg-white"><Link href="/clinician/onboarding?edit=1"><PencilLine size={16} className="mr-2" />Edit Profile</Link></Button>
               <Button asChild className="rounded-full bg-[#0ea5e9] text-white hover:bg-[#38bdf8]"><Link href="/clinician/new-visit"><Plus size={16} className="mr-2" />New Visit</Link></Button>
               <Button asChild variant="ghost" className="rounded-full border border-[#e6d9c4] bg-white/70 text-slate-700 hover:bg-white"><Link href="/signout"><LogOut size={16} className="mr-2" />Sign Out</Link></Button>
             </div>
