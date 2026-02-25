@@ -4,11 +4,7 @@
   <img src="./public/favicon.svg" width="96" alt="Synth logo" />
 </p>
 
-<p align="center"><strong>AI-powered clinical visit workflow platform built on Next.js, Prisma, Gemini, and an Elasticsearch/Kibana clinical intelligence layer.</strong></p>
-
-<p align="center">
-  <code>Next.js 16</code> | <code>React 19</code> | <code>TypeScript</code> | <code>Prisma + SQLite</code> | <code>Gemini</code> | <code>Elasticsearch</code> | <code>Kibana Agent Builder</code>
-</p>
+<p align="center"><strong>AI-powered clinical visit workflow platform built on Elasticsearch/Kibana clinical intelligence layer.</strong></p>
 
 ---
 
